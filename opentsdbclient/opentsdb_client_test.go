@@ -1,11 +1,11 @@
-package datadogclient_test
+package opentsdbclient_test
 
 import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/cloudfoundry-incubator/datadog-firehose-nozzle/datadogclient"
+	"../opentsdbclient"
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
@@ -16,7 +16,7 @@ import (
 
 var bodyChan chan []byte
 
-var _ = Describe("DatadogClient", func() {
+var _ = Describe("OpentsdbClient", func() {
 
 	var ts *httptest.Server
 
@@ -26,7 +26,7 @@ var _ = Describe("DatadogClient", func() {
 	})
 
 	It("posts ValueMetrics in JSON format", func() {
-		c := datadogclient.New(ts.URL, "dummykey", "")
+		c := opentsdbclient.New(ts.URL, "")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -65,7 +65,7 @@ var _ = Describe("DatadogClient", func() {
 	})
 
 	It("registers metrics with the same name but different tags as different", func() {
-		c := datadogclient.New(ts.URL, "dummykey", "")
+		c := opentsdbclient.New(ts.URL, "")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -102,7 +102,7 @@ var _ = Describe("DatadogClient", func() {
 	})
 
 	It("posts CounterEvents in JSON format and empties map after post", func() {
-		c := datadogclient.New(ts.URL, "dummykey", "")
+		c := opentsdbclient.New(ts.URL, "")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),

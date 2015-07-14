@@ -1,4 +1,4 @@
-package datadogclient_test
+package opentsdbclient_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestDatadogclient(t *testing.T) {
+func TestOpentsdbclient(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Datadogclient Suite")
+	RunSpecs(t, "Opentsdbclient Suite")
 }

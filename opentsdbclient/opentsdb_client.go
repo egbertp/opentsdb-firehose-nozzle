@@ -1,4 +1,4 @@
-package datadogclient
+package opentsdbclient
 
 import (
 	"bytes"
@@ -11,19 +11,17 @@ import (
 	"github.com/cloudfoundry/sonde-go/events"
 )
 
-const DefaultAPIURL = "https://app.datadoghq.com/api/v1"
+const DefaultAPIURL = "http://locahost/api"
 
 type Client struct {
 	apiURL       string
-	apiKey       string
 	metricPoints map[metricKey]metricValue
 	prefix       string
 }
 
-func New(apiURL string, apiKey string, prefix string) *Client {
+func New(apiURL string, prefix string) *Client {
 	return &Client{
 		apiURL:       apiURL,
-		apiKey:       apiKey,
 		metricPoints: make(map[metricKey]metricValue),
 		prefix:       prefix,
 	}
@@ -72,19 +70,21 @@ func (c *Client) PostMetrics() error {
 }
 
 func (c *Client) seriesURL() string {
-	url := fmt.Sprintf("%s?api_key=%s", c.apiURL, c.apiKey)
+	url := fmt.Sprintf("%s/put", c.apiURL)
 	return url
 }
 
 func (c *Client) formatMetrics() []byte {
 	metrics := []metric{}
 	for key, mVal := range c.metricPoints {
-		metrics = append(metrics, metric{
+                for _, p := range mVal.points {
+		     metrics = append(metrics, metric{
 			Metric: c.prefix + key.name,
-			Points: mVal.points,
-			Type:   "gauge",
+			Timestamp: p.timestamp,
+			Value:   p.value,
 			Tags:   mVal.tags,
-		})
+		     })
+                }
 	}
 
 	encodedMetric, _ := json.Marshal(payload{Series: metrics})
@@ -157,7 +157,8 @@ func (p point) MarshalJSON() ([]byte, error) {
 
 type metric struct {
 	Metric string   `json:"metric"`
-	Points []point  `json:"points"`
+        Value  float64  `json:"value"`
+        Timestamp int64 `json:"timestamp"`
 	Type   string   `json:"type"`
 	Host   string   `json:"host,omitempty"`
 	Tags   []string `json:"tags,omitempty"`
