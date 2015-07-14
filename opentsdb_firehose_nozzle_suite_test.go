@@ -9,16 +9,16 @@ import (
 	"github.com/onsi/gomega/gexec"
 )
 
-func TestDatadogFirehoseNozzle(t *testing.T) {
+func TestOpentsdbFirehoseNozzle(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "DatadogFirehoseNozzle Suite")
+	RunSpecs(t, "OpentsdbFirehoseNozzle Suite")
 }
 
 var pathToNozzleExecutable string
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToNozzleExecutable, err = gexec.Build("github.com/cloudfoundry-incubator/datadog-firehose-nozzle")
+	pathToNozzleExecutable, err = gexec.Build("github.com/pivotal-cloudops/opentsdb-firehose-nozzle")
 	Expect(err).ShouldNot(HaveOccurred())
 })
 

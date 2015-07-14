@@ -23,7 +23,7 @@ var (
 	fakeDDChan            chan []byte
 )
 
-var _ = Describe("DatadogFirehoseNozzle", func() {
+var _ = Describe("OpentsdbFirehoseNozzle", func() {
 	var (
 		fakeUAA      *http.Server
 		fakeFirehose *http.Server
