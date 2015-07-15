@@ -77,17 +77,17 @@ func (c *Client) seriesURL() string {
 func (c *Client) formatMetrics() []byte {
 	metrics := []metric{}
 	for key, mVal := range c.metricPoints {
-                for _, p := range mVal.points {
-		     metrics = append(metrics, metric{
-			Metric: c.prefix + key.name,
-			Timestamp: p.timestamp,
-			Value:   p.value,
-			Tags:   mVal.tags,
-		     })
-                }
+  	for _, p := range mVal.points {
+		  metrics = append(metrics, metric{
+				Metric: c.prefix + key.name,
+				Timestamp: p.timestamp,
+				Value:   p.value,
+				Tags:   mVal.tags,
+     	})
+    }
 	}
 
-	encodedMetric, _ := json.Marshal(payload{Series: metrics})
+	encodedMetric, _ := json.Marshal(metrics)
 
 	return encodedMetric
 }
@@ -159,7 +159,6 @@ type metric struct {
 	Metric string   `json:"metric"`
         Value  float64  `json:"value"`
         Timestamp int64 `json:"timestamp"`
-	Type   string   `json:"type"`
 	Host   string   `json:"host,omitempty"`
 	Tags   []string `json:"tags,omitempty"`
 }

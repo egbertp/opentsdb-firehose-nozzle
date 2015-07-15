@@ -54,14 +54,26 @@ var _ = Describe("OpentsdbClient", func() {
 
 		err := c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
-		Eventually(bodyChan).Should(Receive(MatchJSON(`{
-		"series":[
-			{"metric":"origin.metricName",
-
-				"points":[[1,5], [2,76]],
-				"type":"gauge",
-				"tags":["deployment:deployment-name", "job:doppler"]}
-		]}`)))
+		Eventually(bodyChan).Should(Receive(MatchJSON(`[
+          {
+            "metric": "origin.metricName",
+            "value": 5,
+            "timestamp": 1,
+            "tags": [
+              "deployment:deployment-name",
+              "job:doppler"
+            ]
+          },
+          {
+            "metric": "origin.metricName",
+            "value": 76,
+            "timestamp": 2,
+            "tags": [
+              "deployment:deployment-name",
+              "job:doppler"
+            ]
+          }
+        ]`)))
 	})
 
 	It("registers metrics with the same name but different tags as different", func() {
@@ -128,16 +140,22 @@ var _ = Describe("OpentsdbClient", func() {
 
 		err := c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
-		Eventually(bodyChan).Should(Receive(MatchJSON(`{
-		"series":[
-			{"metric":"origin.counterName",
-				"points":[[1,5],[2,11]],
-				"type":"gauge"}
-		]}`)))
+		Eventually(bodyChan).Should(Receive(MatchJSON(`[
+			{
+        "metric": "origin.counterName",
+        "value": 5,
+        "timestamp": 1
+      },
+      {
+        "metric": "origin.counterName",
+        "value": 11,
+        "timestamp": 2
+      }
+		]`)))
 
 		err = c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
-		Eventually(bodyChan).Should(Receive(MatchJSON(`{"series":[]}`)))
+		Eventually(bodyChan).Should(Receive(MatchJSON(`[]`)))
 	})
 
 })
