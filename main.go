@@ -10,7 +10,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/cloudfoundry-incubator/datadog-firehose-nozzle/datadogclient"
+	"./opentsdbclient"
 	"github.com/cloudfoundry-incubator/uaago"
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
@@ -22,8 +22,7 @@ type nozzleConfig struct {
 	Password               string
 	TrafficControllerURL   string
 	FirehoseSubscriptionID string
-	DataDogURL             string
-	DataDogAPIKey          string
+	OpentsdbURL            string
 	FlushDurationSeconds   uint32
 	InsecureSSLSkipVerify  bool
 	MetricPrefix           string
@@ -31,7 +30,7 @@ type nozzleConfig struct {
 
 func main() {
 	var (
-		configFilePath = flag.String("config", "config/datadog-firehose-nozzle.json", "Location of the nozzle config json file")
+		configFilePath = flag.String("config", "config/opentsdb-firehose-nozzle.json", "Location of the nozzle config json file")
 	)
 	flag.Parse()
 	config, err := parseConfig(*configFilePath)
@@ -65,7 +64,7 @@ func main() {
 		close(done)
 	}()
 
-	client := datadogclient.New(config.DataDogURL, config.DataDogAPIKey, config.MetricPrefix)
+	client := opentsdbclient.New(config.OpentsdbURL, config.MetricPrefix)
 	ticker := time.NewTicker(time.Duration(config.FlushDurationSeconds) * time.Second)
 
 	for {
@@ -96,7 +95,7 @@ func parseConfig(configPath string) (nozzleConfig, error) {
 	return config, err
 }
 
-func postMetrics(client *datadogclient.Client) {
+func postMetrics(client *opentsdbclient.Client) {
 	err := client.PostMetrics()
 	if err != nil {
 		log.Printf("Error: %s", err.Error())

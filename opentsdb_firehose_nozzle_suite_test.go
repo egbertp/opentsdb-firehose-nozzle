@@ -14,12 +14,9 @@ func TestOpentsdbFirehoseNozzle(t *testing.T) {
 	RunSpecs(t, "OpentsdbFirehoseNozzle Suite")
 }
 
-var pathToNozzleExecutable string
+var pathToNozzleExecutable string = "./opentsdb-firehose-nozzle"
 
 var _ = BeforeSuite(func() {
-	var err error
-	pathToNozzleExecutable, err = gexec.Build("github.com/pivotal-cloudops/opentsdb-firehose-nozzle")
-	Expect(err).ShouldNot(HaveOccurred())
 })
 
 var _ = AfterSuite(func() {

@@ -157,8 +157,8 @@ func (p point) MarshalJSON() ([]byte, error) {
 
 type metric struct {
 	Metric string   `json:"metric"`
-        Value  float64  `json:"value"`
-        Timestamp int64 `json:"timestamp"`
+  Value  float64  `json:"value"`
+  Timestamp int64 `json:"timestamp"`
 	Host   string   `json:"host,omitempty"`
 	Tags   []string `json:"tags,omitempty"`
 }

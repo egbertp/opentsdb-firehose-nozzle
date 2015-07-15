@@ -27,7 +27,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 	var (
 		fakeUAA      *http.Server
 		fakeFirehose *http.Server
-		fakeDatadog  *http.Server
+		fakeOpentsdb *http.Server
 
 		nozzleSession *gexec.Session
 	)
@@ -44,14 +44,14 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			Addr:    ":8086",
 			Handler: http.HandlerFunc(fakeFirehoseHandler),
 		}
-		fakeDatadog = &http.Server{
+		fakeOpentsdb = &http.Server{
 			Addr:    ":8087",
-			Handler: http.HandlerFunc(fakeDatadogHandler),
+			Handler: http.HandlerFunc(fakeOpentsdbHandler),
 		}
 
 		go fakeUAA.ListenAndServe()
 		go fakeFirehose.ListenAndServe()
-		go fakeDatadog.ListenAndServe()
+		go fakeOpentsdb.ListenAndServe()
 
 		var err error
 		nozzleCommand := exec.Command(pathToNozzleExecutable, "-config", "fixtures/test-config.json")
@@ -114,13 +114,14 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 		Eventually(fakeDDChan, "2s").Should(Receive(&messageBytes))
 
 		// Break JSON blob into a list of blobs, one for each metric
-		var jsonBlob map[string][]interface{}
+		var jsonBlob []interface{}
 
+    log.Printf("Received message is: \n %s\n", string(messageBytes))
 		err := json.Unmarshal(messageBytes, &jsonBlob)
 		Expect(err).NotTo(HaveOccurred())
 		var series [][]byte
 
-		for _, metric := range jsonBlob["series"] {
+		for _, metric := range jsonBlob {
 			buffer, _ := json.Marshal(metric)
 			series = append(series, buffer)
 		}
@@ -128,20 +129,20 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 		Expect(series).To(ConsistOf(
 			MatchJSON(`{
                 "metric":"origin.metricName",
-                "points":[[1,5]],
-                "type":"gauge",
+                "timestamp": 1,
+                "value": 5,
                 "tags":["deployment:deployment-name", "job:doppler"]
             }`),
 			MatchJSON(`{
                 "metric":"origin.metricName",
-                "points":[[2,10]],
-                "type":"gauge",
+                "timestamp": 2,
+                "value": 10,
                 "tags":["deployment:deployment-name", "job:gorouter"]
             }`),
 			MatchJSON(`{
                 "metric":"origin.counterName",
-                "points":[[3,15]],
-                "type":"gauge",
+                "timestamp": 3,
+                "value": 15,
                 "tags":["deployment:deployment-name", "job:doppler"]
             }`),
 		))
@@ -188,7 +189,7 @@ func fakeFirehoseHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func fakeDatadogHandler(rw http.ResponseWriter, r *http.Request) {
+func fakeOpentsdbHandler(rw http.ResponseWriter, r *http.Request) {
 	contents, _ := ioutil.ReadAll(r.Body)
 	defer r.Body.Close()
 
