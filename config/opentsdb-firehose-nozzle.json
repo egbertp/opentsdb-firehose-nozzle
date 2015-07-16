@@ -3,7 +3,7 @@
   "Username": "user",
   "Password": "user_password",
   "TrafficControllerURL": "wss://doppler.walnut.cf-app.com:4443",
-  "FirehoseSubscriptionID": "datadog-nozzle",
+  "FirehoseSubscriptionID": "opentsdb-nozzle",
   "OpentsdbURL": "http://localhost",
   "FlushDurationSeconds": 15,
   "InsecureSSLSkipVerify": true,

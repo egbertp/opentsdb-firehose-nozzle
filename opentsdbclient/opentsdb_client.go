@@ -62,7 +62,7 @@ func (c *Client) PostMetrics() error {
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		return fmt.Errorf("datadog request returned HTTP status code: %v", resp.StatusCode)
+		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
 	}
 
 	c.metricPoints = make(map[metricKey]metricValue)
