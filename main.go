@@ -10,8 +10,8 @@ import (
 	"log"
 	"time"
 
-	"./opentsdbclient"
-	"github.com/cloudfoundry-incubator/uaago"
+    "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
+    "github.com/cloudfoundry-incubator/uaago"
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 )
