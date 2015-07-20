@@ -54,6 +54,7 @@ func (c *Client) PostMetrics() error {
 	log.Printf("Posting %d metrics", numMetrics)
 	url := c.seriesURL()
 	seriesBytes := c.formatMetrics()
+        log.Printf("Posting \n %s", string(seriesBytes[:]))
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
