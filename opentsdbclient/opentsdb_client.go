@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"time"
+    "strconv"
 
 	"github.com/cloudfoundry/sonde-go/events"
 )
@@ -102,7 +103,7 @@ type metricKey struct {
 }
 
 type metricValue struct {
-	tags   []string
+	tags   tags
 	points []point
 }
 
@@ -128,15 +129,16 @@ func getValue(envelope *events.Envelope) float64 {
 	}
 }
 
-func getTags(envelope *events.Envelope) []string {
-	var tags []string
-
-	tags = appendTagIfNotEmpty(tags, "deployment", envelope.GetDeployment())
-	tags = appendTagIfNotEmpty(tags, "job", envelope.GetJob())
-	tags = appendTagIfNotEmpty(tags, "index", envelope.GetIndex())
-	tags = appendTagIfNotEmpty(tags, "ip", envelope.GetIp())
-
-	return tags
+func getTags(envelope *events.Envelope) tags {
+    index, err := strconv.Atoi(envelope.GetIndex())
+    if err != nil {
+        fmt.Println("Error %s", err.Error())
+        index = 0
+    }
+    fmt.Println("deployment %s, index %d", envelope.GetDeployment(), index)
+    ret := tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
+    fmt.Println(ret)
+    return ret
 }
 
 func appendTagIfNotEmpty(tags []string, key string, value string) []string {
@@ -160,7 +162,14 @@ type metric struct {
   Value  float64  `json:"value"`
   Timestamp int64 `json:"timestamp"`
 	Host   string   `json:"host,omitempty"`
-	Tags   []string `json:"tags,omitempty"`
+    Tags  tags `json:"tags"`
+}
+
+type tags struct {
+    Deployment string `json:"deployment"`
+    Job string `json:"job"`
+    Index int `json:"index"`
+    Ip string `json:"ip"`
 }
 
 type payload struct {

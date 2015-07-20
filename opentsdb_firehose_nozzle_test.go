@@ -131,19 +131,19 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
                 "metric":"origin.metricName",
                 "timestamp": 1,
                 "value": 5,
-                "tags":["deployment:deployment-name", "job:doppler"]
+                "tags":{"deployment":"deployment-name", "job":"doppler", "index":0, "ip":""}
             }`),
 			MatchJSON(`{
                 "metric":"origin.metricName",
                 "timestamp": 2,
                 "value": 10,
-                "tags":["deployment:deployment-name", "job:gorouter"]
+                "tags":{"deployment":"deployment-name", "job":"gorouter", "index":0, "ip":""}
             }`),
 			MatchJSON(`{
                 "metric":"origin.counterName",
                 "timestamp": 3,
                 "value": 15,
-                "tags":["deployment:deployment-name", "job:doppler"]
+                "tags":{"deployment":"deployment-name", "job":"doppler", "index":0, "ip":""}
             }`),
 		))
 
