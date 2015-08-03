@@ -10,10 +10,10 @@ import (
 	"log"
 	"time"
 
-    "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
-    "github.com/cloudfoundry-incubator/uaago"
+	"github.com/cloudfoundry-incubator/uaago"
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 )
 
 type nozzleConfig struct {
@@ -66,6 +66,7 @@ func main() {
 
 	client := opentsdbclient.New(config.OpentsdbURL, config.MetricPrefix)
 	ticker := time.NewTicker(time.Duration(config.FlushDurationSeconds) * time.Second)
+	count := 0
 
 	for {
 		select {
@@ -73,6 +74,12 @@ func main() {
 			postMetrics(client)
 		case envelope := <-messages:
 			client.AddMetric(envelope)
+			count = count + 1
+
+			if count > 50 {
+				postMetrics(client)
+				count = 0
+			}
 		case <-done:
 			postMetrics(client)
 			consumer.Close()
