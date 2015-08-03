@@ -55,25 +55,29 @@ var _ = Describe("OpentsdbClient", func() {
 		err := c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(MatchJSON(`[
-          {
-            "metric": "origin.metricName",
-            "value": 5,
-            "timestamp": 1,
-            "tags": [
-              "deployment:deployment-name",
-              "job:doppler"
-            ]
-          },
-          {
-            "metric": "origin.metricName",
-            "value": 76,
-            "timestamp": 2,
-            "tags": [
-              "deployment:deployment-name",
-              "job:doppler"
-            ]
+        {
+          "metric": "origin.metricName",
+          "value": 5,
+          "timestamp": 1,
+          "tags": {
+            "deployment": "deployment-name",
+            "job": "doppler",
+            "index": 0,
+            "ip": ""
           }
-        ]`)))
+        },
+        {
+          "metric": "origin.metricName",
+          "value": 76,
+          "timestamp": 2,
+          "tags": {
+            "deployment": "deployment-name",
+            "job": "doppler",
+            "index": 0,
+            "ip": ""
+          }
+        }
+    ]`)))
 	})
 
 	It("registers metrics with the same name but different tags as different", func() {
@@ -109,8 +113,8 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
-		Expect(receivedBytes).To(ContainSubstring(`["deployment:deployment-name","job:doppler"]`))
-		Expect(receivedBytes).To(ContainSubstring(`["deployment:deployment-name","job:gorouter"]`))
+		Expect(receivedBytes).To(ContainSubstring(`"deployment":"deployment-name","job":"doppler"`))
+		Expect(receivedBytes).To(ContainSubstring(`"deployment":"deployment-name","job":"gorouter"`))
 	})
 
 	It("posts CounterEvents in JSON format and empties map after post", func() {
@@ -141,16 +145,28 @@ var _ = Describe("OpentsdbClient", func() {
 		err := c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(MatchJSON(`[
-			{
-        "metric": "origin.counterName",
-        "value": 5,
-        "timestamp": 1
-      },
-      {
-        "metric": "origin.counterName",
-        "value": 11,
-        "timestamp": 2
-      }
+        {
+          "metric": "origin.counterName",
+          "value": 5,
+          "timestamp": 1,
+          "tags": {
+            "deployment": "",
+            "job": "",
+            "index": 0,
+            "ip": ""
+          }
+        },
+        {
+          "metric": "origin.counterName",
+          "value": 11,
+          "timestamp": 2,
+          "tags": {
+            "deployment": "",
+            "job": "",
+            "index": 0,
+            "ip": ""
+          }
+        }
 		]`)))
 
 		err = c.PostMetrics()
