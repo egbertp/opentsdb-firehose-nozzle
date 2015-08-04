@@ -7,7 +7,8 @@ import (
 	"log"
 	"net/http"
 	"time"
-    "strconv"
+        "strconv"
+        "io/ioutil"
 
 	"github.com/cloudfoundry/sonde-go/events"
 )
@@ -43,7 +44,7 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 
 	mVal.tags = getTags(envelope)
 	mVal.points = append(mVal.points, point{
-		timestamp: envelope.GetTimestamp(),
+		timestamp: envelope.GetTimestamp() / int64(time.Second),
 		value:     value,
 	})
 
@@ -63,6 +64,11 @@ func (c *Client) PostMetrics() error {
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+               contents, err := ioutil.ReadAll(resp.Body)
+               if err != nil {
+                   fmt.Printf("%s", err)
+                }
+                fmt.Println("Response body is: %s", contents)
 		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
 	}
 
@@ -71,7 +77,7 @@ func (c *Client) PostMetrics() error {
 }
 
 func (c *Client) seriesURL() string {
-	url := fmt.Sprintf("%s/put", c.apiURL)
+	url := fmt.Sprintf("%s/put?details", c.apiURL)
 	return url
 }
 
