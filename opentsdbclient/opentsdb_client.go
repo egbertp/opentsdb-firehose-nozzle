@@ -68,7 +68,7 @@ func (c *Client) PostMetrics() error {
                if err != nil {
                    fmt.Printf("%s", err)
                 }
-                fmt.Println("Response body is: %s", contents)
+                fmt.Println("Response body is: %s", string(contents))
 		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
 	}
 
