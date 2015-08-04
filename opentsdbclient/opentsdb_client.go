@@ -43,7 +43,7 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 
 	mVal.tags = getTags(envelope)
 	mVal.points = append(mVal.points, point{
-		timestamp: envelope.GetTimestamp() / int64(time.Second),
+		timestamp: envelope.GetTimestamp(),
 		value:     value,
 	})
 
