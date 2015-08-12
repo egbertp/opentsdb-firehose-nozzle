@@ -116,7 +116,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 		// Break JSON blob into a list of blobs, one for each metric
 		var jsonBlob []interface{}
 
-    log.Printf("Received message is: \n %s\n", string(messageBytes))
+		log.Printf("Received message is: \n %s\n", string(messageBytes))
 		err := json.Unmarshal(messageBytes, &jsonBlob)
 		Expect(err).NotTo(HaveOccurred())
 		var series [][]byte

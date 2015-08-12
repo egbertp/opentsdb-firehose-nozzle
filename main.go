@@ -103,7 +103,7 @@ func parseConfig(configPath string) (nozzleConfig, error) {
 }
 
 func postMetrics(client *opentsdbclient.Client) {
-	err := client.PostMetrics()
+	err := client.PostAllMetrics()
 	if err != nil {
 		log.Printf("Error: %s", err.Error())
 	}

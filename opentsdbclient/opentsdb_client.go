@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
-        "strconv"
-        "io/ioutil"
 
 	"github.com/cloudfoundry/sonde-go/events"
 )
@@ -51,11 +51,42 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	c.metricPoints[key] = mVal
 }
 
-func (c *Client) PostMetrics() error {
+func (c *Client) PostAllMetrics() error {
+	var err error
 	numMetrics := len(c.metricPoints)
+	if numMetrics > 50 {
+		i := 0
+		someMetrics := make(map[metricKey]metricValue)
+		for k, v := range c.metricPoints {
+			someMetrics[k] = v
+			i := i + 1
+			if i >= 50 {
+				err = c.PostMetrics(someMetrics)
+
+				if err != nil {
+					fmt.Println("PostAllMetrics Error %s", err.Error())
+				}
+
+				i = 0
+				someMetrics = make(map[metricKey]metricValue)
+			}
+		}
+
+		if i > 0 {
+			err = c.PostMetrics(someMetrics)
+		}
+	} else {
+		err = c.PostMetrics(c.metricPoints)
+	}
+
+	return err
+}
+
+func (c *Client) PostMetrics(metrics map[metricKey]metricValue) error {
+	numMetrics := len(metrics)
 	log.Printf("Posting %d metrics", numMetrics)
 	url := c.seriesURL()
-	seriesBytes := c.formatMetrics()
+	seriesBytes := c.formatMetrics(metrics)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -64,11 +95,11 @@ func (c *Client) PostMetrics() error {
 
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-               contents, err := ioutil.ReadAll(resp.Body)
-               if err != nil {
-                   fmt.Printf("%s", err)
-                }
-                fmt.Println("Response body is: %s", string(contents))
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Printf("%s", err)
+		}
+		fmt.Println("Response body is: %s", string(contents))
 		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
 	}
 
@@ -81,17 +112,17 @@ func (c *Client) seriesURL() string {
 	return url
 }
 
-func (c *Client) formatMetrics() []byte {
+func (c *Client) formatMetrics(inMetrics map[metricKey]metricValue) []byte {
 	metrics := []metric{}
-	for key, mVal := range c.metricPoints {
-  	for _, p := range mVal.points {
-		  metrics = append(metrics, metric{
-				Metric: c.prefix + key.name,
+	for key, mVal := range inMetrics {
+		for _, p := range mVal.points {
+			metrics = append(metrics, metric{
+				Metric:    c.prefix + key.name,
 				Timestamp: p.timestamp,
-				Value:   p.value,
-				Tags:   mVal.tags,
-     	})
-    }
+				Value:     p.value,
+				Tags:      mVal.tags,
+			})
+		}
 	}
 
 	encodedMetric, _ := json.Marshal(metrics)
@@ -136,15 +167,15 @@ func getValue(envelope *events.Envelope) float64 {
 }
 
 func getTags(envelope *events.Envelope) tags {
-    index, err := strconv.Atoi(envelope.GetIndex())
-    if err != nil {
-        fmt.Println("Error %s", err.Error())
-        index = 0
-    }
-    fmt.Println("deployment %s, index %d", envelope.GetDeployment(), index)
-    ret := tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
-    fmt.Println(ret)
-    return ret
+	index, err := strconv.Atoi(envelope.GetIndex())
+	if err != nil {
+		fmt.Println("Error %s", err.Error())
+		index = 0
+	}
+	fmt.Println("deployment %s, index %d", envelope.GetDeployment(), index)
+	ret := tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
+	fmt.Println(ret)
+	return ret
 }
 
 func appendTagIfNotEmpty(tags []string, key string, value string) []string {
@@ -164,18 +195,18 @@ func (p point) MarshalJSON() ([]byte, error) {
 }
 
 type metric struct {
-	Metric string   `json:"metric"`
-  Value  float64  `json:"value"`
-  Timestamp int64 `json:"timestamp"`
-	Host   string   `json:"host,omitempty"`
-    Tags  tags `json:"tags"`
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Timestamp int64   `json:"timestamp"`
+	Host      string  `json:"host,omitempty"`
+	Tags      tags    `json:"tags"`
 }
 
 type tags struct {
-    Deployment string `json:"deployment"`
-    Job string `json:"job"`
-    Index int `json:"index"`
-    Ip string `json:"ip"`
+	Deployment string `json:"deployment"`
+	Job        string `json:"job"`
+	Index      int    `json:"index"`
+	Ip         string `json:"ip"`
 }
 
 type payload struct {
