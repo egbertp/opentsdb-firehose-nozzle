@@ -61,10 +61,10 @@ func (c *Client) PostAllMetrics() error {
 			someMetrics[k] = v
 			i := i + 1
 			if i >= 50 {
-				err = c.PostMetrics(someMetrics)
+				err = c.postMetrics(someMetrics)
 
 				if err != nil {
-					fmt.Println("PostAllMetrics Error %s", err.Error())
+					log.Printf("PostAllMetrics Error %s", err.Error())
 				}
 
 				i = 0
@@ -73,16 +73,16 @@ func (c *Client) PostAllMetrics() error {
 		}
 
 		if i > 0 {
-			err = c.PostMetrics(someMetrics)
+			err = c.postMetrics(someMetrics)
 		}
 	} else {
-		err = c.PostMetrics(c.metricPoints)
+		err = c.postMetrics(c.metricPoints)
 	}
 
 	return err
 }
 
-func (c *Client) PostMetrics(metrics map[metricKey]metricValue) error {
+func (c *Client) postMetrics(metrics map[metricKey]metricValue) error {
 	numMetrics := len(metrics)
 	log.Printf("Posting %d metrics", numMetrics)
 	url := c.seriesURL()
@@ -97,9 +97,9 @@ func (c *Client) PostMetrics(metrics map[metricKey]metricValue) error {
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("%s", err)
+			log.Printf("%s", err)
 		}
-		fmt.Println("Response body is: %s", string(contents))
+		log.Printf("Response body is: %s", string(contents))
 		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
 	}
 
@@ -167,14 +167,15 @@ func getValue(envelope *events.Envelope) float64 {
 }
 
 func getTags(envelope *events.Envelope) tags {
+	log.Printf("Tags: %s\n", envelope.GetIndex())
 	index, err := strconv.Atoi(envelope.GetIndex())
 	if err != nil {
-		fmt.Println("Error %s", err.Error())
+		log.Printf("Invalid Index \"%s\" provided, using default index 0\n", envelope.GetIndex())
 		index = 0
 	}
-	fmt.Println("deployment %s, index %d", envelope.GetDeployment(), index)
+	log.Printf("deployment %s, index %d\n", envelope.GetDeployment(), index)
 	ret := tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
-	fmt.Println(ret)
+	log.Println(ret)
 	return ret
 }
 

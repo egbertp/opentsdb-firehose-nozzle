@@ -38,6 +38,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
+			Index:      proto.String("0"),
 		})
 
 		c.AddMetric(&events.Envelope{
@@ -50,9 +51,10 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
+			Index:      proto.String("0"),
 		})
 
-		err := c.PostMetrics()
+		err := c.PostAllMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(MatchJSON(`[
         {
@@ -107,7 +109,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Job:        proto.String("gorouter"),
 		})
 
-		err := c.PostMetrics()
+		err := c.PostAllMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -142,7 +144,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 		})
 
-		err := c.PostMetrics()
+		err := c.PostAllMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(MatchJSON(`[
         {
@@ -169,7 +171,7 @@ var _ = Describe("OpentsdbClient", func() {
         }
 		]`)))
 
-		err = c.PostMetrics()
+		err = c.PostAllMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(MatchJSON(`[]`)))
 	})
