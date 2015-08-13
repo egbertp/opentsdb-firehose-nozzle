@@ -16,6 +16,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 )
 
 var (
@@ -114,38 +115,48 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 		Eventually(fakeDDChan, "2s").Should(Receive(&messageBytes))
 
 		// Break JSON blob into a list of blobs, one for each metric
-		var jsonBlob []interface{}
+		var metrics []opentsdbclient.Metric
 
 		log.Printf("Received message is: %s\n", string(messageBytes))
-		err := json.Unmarshal(messageBytes, &jsonBlob)
+		err := json.Unmarshal(messageBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
-		var series [][]byte
 
-		for _, metric := range jsonBlob {
-			buffer, _ := json.Marshal(metric)
-			series = append(series, buffer)
-		}
-
-		Expect(series).To(ConsistOf(
-			MatchJSON(`{
-                "metric":"origin.metricName",
-                "timestamp": 1,
-                "value": 5,
-                "tags":{"deployment":"deployment-name", "job":"doppler", "index":0, "ip":""}
-            }`),
-			MatchJSON(`{
-                "metric":"origin.metricName",
-                "timestamp": 2,
-                "value": 10,
-                "tags":{"deployment":"deployment-name", "job":"gorouter", "index":0, "ip":""}
-            }`),
-			MatchJSON(`{
-                "metric":"origin.counterName",
-                "timestamp": 3,
-                "value": 15,
-                "tags":{"deployment":"deployment-name", "job":"doppler", "index":0, "ip":""}
-            }`),
-		))
+		Expect(metrics).To(ContainElement(
+			opentsdbclient.Metric{
+				Metric:    "origin.metricName",
+				Timestamp: 1,
+				Value:     5,
+				Tags: opentsdbclient.Tags{
+					Deployment: "deployment-name",
+					Job:        "doppler",
+					Index:      0,
+					IP:         "",
+				},
+			}))
+		Expect(metrics).To(ContainElement(
+			opentsdbclient.Metric{
+				Metric:    "origin.metricName",
+				Timestamp: 2,
+				Value:     10,
+				Tags: opentsdbclient.Tags{
+					Deployment: "deployment-name",
+					Job:        "gorouter",
+					Index:      0,
+					IP:         "",
+				},
+			}))
+		Expect(metrics).To(ContainElement(
+			opentsdbclient.Metric{
+				Metric:    "origin.counterName",
+				Timestamp: 3,
+				Value:     15,
+				Tags: opentsdbclient.Tags{
+					Deployment: "deployment-name",
+					Job:        "doppler",
+					Index:      0,
+					IP:         "",
+				},
+			}))
 
 		close(done)
 	}, 2.0)
