@@ -9,5 +9,6 @@
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "opentsdbclient",
   "Deployment": "deployment-name",
-  "DisableAccessControl": false
+  "DisableAccessControl": false,
+  "MaxBufferSize": 50
 }

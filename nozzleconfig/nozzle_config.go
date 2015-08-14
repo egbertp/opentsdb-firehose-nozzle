@@ -20,6 +20,7 @@ type NozzleConfig struct {
 	MetricPrefix           string
 	Deployment             string
 	DisableAccessControl   bool
+	MaxBufferSize          uint32
 }
 
 func Parse(configPath string) (*NozzleConfig, error) {
@@ -48,6 +49,7 @@ func Parse(configPath string) (*NozzleConfig, error) {
 
 	overrideWithEnvVar("NOZZLE_DEPLOYMENT", &config.Deployment)
 	overrideWithEnvBool("NOZZLE_DISABLEACCESSCONTROL", &config.DisableAccessControl)
+	overrideWithEnvUint32("NOZZLE_MAXBUFFERSIZE", &config.MaxBufferSize)
 
 	return &config, nil
 }

@@ -26,6 +26,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.MetricPrefix).To(Equal("opentsdbclient"))
 		Expect(conf.Deployment).To(Equal("deployment-name"))
 		Expect(conf.DisableAccessControl).To(Equal(false))
+		Expect(conf.MaxBufferSize).To(BeEquivalentTo(50))
 	})
 
 	It("successfully overwrites file config values with environmental variables", func() {
@@ -40,6 +41,7 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_METRICPREFIX", "env-opentsdbclient")
 		os.Setenv("NOZZLE_DEPLOYMENT", "env-deployment-name")
 		os.Setenv("NOZZLE_DISABLEACCESSCONTROL", "true")
+		os.Setenv("NOZZLE_MAXBUFFERSIZE", "12")
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
 		Expect(err).ToNot(HaveOccurred())
@@ -54,5 +56,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.MetricPrefix).To(Equal("env-opentsdbclient"))
 		Expect(conf.Deployment).To(Equal("env-deployment-name"))
 		Expect(conf.DisableAccessControl).To(Equal(true))
+		Expect(conf.MaxBufferSize).To(BeEquivalentTo(12))
+
 	})
 })

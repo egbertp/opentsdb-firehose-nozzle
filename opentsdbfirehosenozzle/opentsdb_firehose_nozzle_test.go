@@ -47,6 +47,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 			TrafficControllerURL: strings.Replace(fakeFirehose.URL(), "http:", "ws:", 1),
 			DisableAccessControl: false,
 			MetricPrefix:         "opentsdb.nozzle.",
+			MaxBufferSize:        50,
 		}
 
 		logOutput = gbytes.NewBuffer()
