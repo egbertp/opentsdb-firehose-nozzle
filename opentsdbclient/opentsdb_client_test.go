@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"../opentsdbclient"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"

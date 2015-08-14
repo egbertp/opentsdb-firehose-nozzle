@@ -75,6 +75,7 @@ func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() {
 		select {
 		case <-ticker.C:
 			o.postMetrics()
+			count = 0
 		case envelope := <-o.messages:
 			count++
 			o.handleMessage(envelope)
