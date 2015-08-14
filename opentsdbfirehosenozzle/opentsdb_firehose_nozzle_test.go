@@ -25,6 +25,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 	var config *nozzleconfig.NozzleConfig
 	var nozzle *opentsdbfirehosenozzle.OpenTSDBFirehoseNozzle
 	var logOutput *gbytes.Buffer
+	var tokenFetcher *uaatokenfetcher.UAATokenFetcher
 
 	BeforeEach(func() {
 		fakeUAA = NewFakeUAA("bearer", "123456789")
@@ -36,7 +37,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		fakeFirehose.Start()
 		fakeOpenTSDB.Start()
 
-		tokenFetcher := &uaatokenfetcher.UAATokenFetcher{
+		tokenFetcher = &uaatokenfetcher.UAATokenFetcher{
 			UaaUrl: fakeUAA.URL(),
 		}
 
@@ -61,11 +62,52 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		fakeOpenTSDB.Close()
 	})
 
-	It("sends metrics when there are more than 50", func(done Done) {
+	It("sends metrics when the FlushDurationTicker ticks", func(done Done) {
 		defer close(done)
 		fakeFirehose.KeepConnectionAlive()
+		defer fakeFirehose.CloseAliveConnection()
 
-		for i := 0; i < 51; i++ {
+		config.FlushDurationSeconds = 1
+		nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
+
+		envelope := events.Envelope{
+			Origin:    proto.String("origin"),
+			Timestamp: proto.Int64(1000000000),
+			EventType: events.Envelope_ValueMetric.Enum(),
+			ValueMetric: &events.ValueMetric{
+				Name:  proto.String("metricName"),
+				Value: proto.Float64(float64(1)),
+				Unit:  proto.String("gauge"),
+			},
+			Deployment: proto.String("deployment-name"),
+			Job:        proto.String("doppler"),
+		}
+		fakeFirehose.AddEvent(envelope)
+
+		go nozzle.Start()
+
+		var contents []byte
+		Eventually(fakeOpenTSDB.ReceivedContents, 2).Should(Receive(&contents))
+
+		var metrics []opentsdbclient.Metric
+		err := json.Unmarshal(contents, &metrics)
+		Expect(err).ToNot(HaveOccurred())
+
+		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
+
+		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and slowConsumerAlert
+		Expect(metrics).To(HaveLen(4))
+	}, 3)
+
+	It("sends metrics when there are more messages than buffersize", func(done Done) {
+		defer close(done)
+		fakeFirehose.KeepConnectionAlive()
+		defer fakeFirehose.CloseAliveConnection()
+
+		config.MaxBufferSize = 30
+		nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
+
+		for i := 0; i < 31; i++ {
 			envelope := events.Envelope{
 				Origin:    proto.String("origin"),
 				Timestamp: proto.Int64(1000000000),
@@ -93,8 +135,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
 
 		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and slowConsumerAlert
-		Expect(metrics).To(HaveLen(54))
-		fakeFirehose.CloseAliveConnection()
+		Expect(metrics).To(HaveLen(34))
 	})
 
 	It("receives data from the firehose", func(done Done) {
