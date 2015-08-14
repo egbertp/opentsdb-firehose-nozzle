@@ -21,17 +21,21 @@ var responseCode int
 
 var _ = Describe("OpentsdbClient", func() {
 
-	var ts *httptest.Server
+	var (
+		ts     *httptest.Server
+		c      *opentsdbclient.Client
+		poster opentsdbclient.Poster
+	)
 
 	BeforeEach(func() {
 		bodyChan = make(chan []byte, 1)
 		responseCode = http.StatusOK
 		ts = httptest.NewServer(http.HandlerFunc(handlePost))
+		poster = opentsdbclient.NewHTTPPoster(ts.URL)
+		c = opentsdbclient.New(poster, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
 	})
 
 	It("ignores messages that aren't value metrics or counter events", func() {
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
-
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
@@ -76,7 +80,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts ValueMetrics in JSON format", func() {
-		c := opentsdbclient.New(ts.URL, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(poster, "", "test-deployment", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -142,7 +146,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvent in JSON format", func() {
-		c := opentsdbclient.New(ts.URL, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(poster, "", "test-deployment", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -208,8 +212,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("registers metrics with the same name but different tags as different", func() {
-		c := opentsdbclient.New(ts.URL, "", "test-deployment", "dummy-ip")
-
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
@@ -245,8 +247,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvents in JSON format and empties map after post", func() {
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
-
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
@@ -287,8 +287,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("sends a value 1 for the slowConsumerAlert metric when consumer error is set", func() {
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
-
 		c.AlertSlowConsumerError()
 
 		err := c.PostMetrics()
@@ -308,8 +306,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("sends a value 0 for the slowConsumerAlert metric when consumer error is not set", func() {
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
-
 		err := c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
@@ -326,8 +322,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("unsets the slow consumer error once it publishes the alert to opentsdb", func() {
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
-
 		c.AlertSlowConsumerError()
 
 		err := c.PostMetrics()
@@ -358,8 +352,6 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("returns an error when opentsdb responds with a non 200 response code", func() {
-
-		c := opentsdbclient.New(ts.URL, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
 		responseCode = http.StatusBadRequest // 400
 		err := c.PostMetrics()
 		Expect(err).To(HaveOccurred())

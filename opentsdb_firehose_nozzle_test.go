@@ -13,15 +13,18 @@ import (
 
 	"log"
 
+	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
+	"net"
+	"strings"
 )
 
 var (
 	fakeFirehoseInputChan chan *events.Envelope
-	fakeDDChan            chan []byte
+	fakeOpenTSDBChan      chan []byte
 )
 
 var _ = Describe("OpentsdbFirehoseNozzle", func() {
@@ -35,7 +38,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 
 	BeforeEach(func() {
 		fakeFirehoseInputChan = make(chan *events.Envelope)
-		fakeDDChan = make(chan []byte)
+		fakeOpenTSDBChan = make(chan []byte)
 
 		fakeUAA = &http.Server{
 			Addr:    ":8084",
@@ -45,122 +48,166 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			Addr:    ":8086",
 			Handler: http.HandlerFunc(fakeFirehoseHandler),
 		}
-		fakeOpentsdb = &http.Server{
-			Addr:    ":8087",
-			Handler: http.HandlerFunc(fakeOpentsdbHandler),
-		}
 
 		go fakeUAA.ListenAndServe()
 		go fakeFirehose.ListenAndServe()
-		go fakeOpentsdb.ListenAndServe()
 
-		var err error
-		nozzleCommand := exec.Command(pathToNozzleExecutable, "-config", "fixtures/test-config.json")
-		nozzleSession, err = gexec.Start(
-			nozzleCommand,
-			gexec.NewPrefixedWriter("[o][nozzle] ", GinkgoWriter),
-			gexec.NewPrefixedWriter("[e][nozzle] ", GinkgoWriter),
-		)
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	AfterEach(func() {
 		nozzleSession.Kill().Wait()
 	})
 
-	It("forwards metrics in a batch", func(done Done) {
-		fakeFirehoseInputChan <- &events.Envelope{
-			Origin:    proto.String("origin"),
-			Timestamp: proto.Int64(1000000000),
-			EventType: events.Envelope_ValueMetric.Enum(),
-			ValueMetric: &events.ValueMetric{
-				Name:  proto.String("metricName"),
-				Value: proto.Float64(5),
-				Unit:  proto.String("gauge"),
-			},
-			Deployment: proto.String("deployment-name"),
-			Job:        proto.String("doppler"),
-		}
+	Context("with an HTTP OpenTSDB endpoint", func() {
+		BeforeEach(func() {
+			fakeOpentsdb = &http.Server{
+				Addr:    ":8087",
+				Handler: http.HandlerFunc(fakeOpentsdbHandler),
+			}
+			go fakeOpentsdb.ListenAndServe()
 
-		fakeFirehoseInputChan <- &events.Envelope{
-			Origin:    proto.String("origin"),
-			Timestamp: proto.Int64(2000000000),
-			EventType: events.Envelope_ValueMetric.Enum(),
-			ValueMetric: &events.ValueMetric{
-				Name:  proto.String("metricName"),
-				Value: proto.Float64(10),
-				Unit:  proto.String("gauge"),
-			},
-			Deployment: proto.String("deployment-name"),
-			Job:        proto.String("gorouter"),
-		}
+			var err error
+			nozzleCommand := exec.Command(pathToNozzleExecutable, "-config", "fixtures/http-test-config.json")
+			nozzleSession, err = gexec.Start(
+				nozzleCommand,
+				gexec.NewPrefixedWriter("[o][nozzle] ", GinkgoWriter),
+				gexec.NewPrefixedWriter("[e][nozzle] ", GinkgoWriter),
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("forwards metrics in a batch", func(done Done) {
+			sendEventsThroughFirehose(fakeFirehoseInputChan)
 
-		fakeFirehoseInputChan <- &events.Envelope{
-			Origin:    proto.String("origin"),
-			Timestamp: proto.Int64(3000000000),
-			EventType: events.Envelope_CounterEvent.Enum(),
-			CounterEvent: &events.CounterEvent{
-				Name:  proto.String("counterName"),
-				Delta: proto.Uint64(3),
-				Total: proto.Uint64(15),
-			},
-			Deployment: proto.String("deployment-name"),
-			Job:        proto.String("doppler"),
-		}
+			// eventually receive a batch from fake DD
+			var messageBytes []byte
+			Eventually(fakeOpenTSDBChan, "2s").Should(Receive(&messageBytes))
 
-		close(fakeFirehoseInputChan)
+			// Break JSON blob into a list of blobs, one for each metric
+			var metrics []opentsdbclient.Metric
 
-		// eventually receive a batch from fake DD
-		var messageBytes []byte
-		Eventually(fakeDDChan, "2s").Should(Receive(&messageBytes))
+			log.Printf("Received message is: %s\n", string(messageBytes))
+			err := json.Unmarshal(messageBytes, &metrics)
+			Expect(err).NotTo(HaveOccurred())
 
-		// Break JSON blob into a list of blobs, one for each metric
-		var metrics []opentsdbclient.Metric
+			Expect(metrics).To(ContainElement(
+				opentsdbclient.Metric{
+					Metric:    "origin.metricName",
+					Timestamp: 1,
+					Value:     5,
+					Tags: opentsdbclient.Tags{
+						Deployment: "deployment-name",
+						Job:        "doppler",
+						Index:      0,
+						IP:         "",
+					},
+				}))
+			Expect(metrics).To(ContainElement(
+				opentsdbclient.Metric{
+					Metric:    "origin.metricName",
+					Timestamp: 2,
+					Value:     10,
+					Tags: opentsdbclient.Tags{
+						Deployment: "deployment-name",
+						Job:        "gorouter",
+						Index:      0,
+						IP:         "",
+					},
+				}))
+			Expect(metrics).To(ContainElement(
+				opentsdbclient.Metric{
+					Metric:    "origin.counterName",
+					Timestamp: 3,
+					Value:     15,
+					Tags: opentsdbclient.Tags{
+						Deployment: "deployment-name",
+						Job:        "doppler",
+						Index:      0,
+						IP:         "",
+					},
+				}))
 
-		log.Printf("Received message is: %s\n", string(messageBytes))
-		err := json.Unmarshal(messageBytes, &metrics)
-		Expect(err).NotTo(HaveOccurred())
+			close(done)
+		}, 2.0)
+	})
 
-		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
-				Metric:    "origin.metricName",
-				Timestamp: 1,
-				Value:     5,
-				Tags: opentsdbclient.Tags{
-					Deployment: "deployment-name",
-					Job:        "doppler",
-					Index:      0,
-					IP:         "",
-				},
-			}))
-		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
-				Metric:    "origin.metricName",
-				Timestamp: 2,
-				Value:     10,
-				Tags: opentsdbclient.Tags{
-					Deployment: "deployment-name",
-					Job:        "gorouter",
-					Index:      0,
-					IP:         "",
-				},
-			}))
-		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
-				Metric:    "origin.counterName",
-				Timestamp: 3,
-				Value:     15,
-				Tags: opentsdbclient.Tags{
-					Deployment: "deployment-name",
-					Job:        "doppler",
-					Index:      0,
-					IP:         "",
-				},
-			}))
+	Context("with a Telnet OpenTSDB endpoint", func() {
+		var telnetListener *net.TCPListener
+		BeforeEach(func() {
+			telnetListener = fakeOpenTSDBTelnetListener()
+			var err error
+			nozzleCommand := exec.Command(pathToNozzleExecutable, "-config", "fixtures/telnet-test-config.json")
+			nozzleSession, err = gexec.Start(
+				nozzleCommand,
+				gexec.NewPrefixedWriter("[o][nozzle] ", GinkgoWriter),
+				gexec.NewPrefixedWriter("[e][nozzle] ", GinkgoWriter),
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
 
-		close(done)
-	}, 2.0)
+		AfterEach(func() {
+			telnetListener.Close()
+		})
+
+		It("forwards metrics in a batch", func(done Done) {
+			sendEventsThroughFirehose(fakeFirehoseInputChan)
+
+			var receivedBytes []byte
+			Eventually(fakeOpenTSDBChan).Should(Receive(&receivedBytes))
+			receivedMetrics := strings.Split(string(receivedBytes), "\n")
+			Expect(receivedMetrics).To(HaveLen(7))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 job=doppler", 1, 5.0)))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 job=gorouter", 2, 10.0)))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.counterName %d %f deployment=deployment-name index=0 job=doppler", 3, 15.0)))
+
+			close(done)
+		}, 2.0)
+
+	})
+
 })
+
+func sendEventsThroughFirehose(fakeFirehoseInputChan chan *events.Envelope) {
+	fakeFirehoseInputChan <- &events.Envelope{
+		Origin:    proto.String("origin"),
+		Timestamp: proto.Int64(1000000000),
+		EventType: events.Envelope_ValueMetric.Enum(),
+		ValueMetric: &events.ValueMetric{
+			Name:  proto.String("metricName"),
+			Value: proto.Float64(5),
+			Unit:  proto.String("gauge"),
+		},
+		Deployment: proto.String("deployment-name"),
+		Job:        proto.String("doppler"),
+	}
+
+	fakeFirehoseInputChan <- &events.Envelope{
+		Origin:    proto.String("origin"),
+		Timestamp: proto.Int64(2000000000),
+		EventType: events.Envelope_ValueMetric.Enum(),
+		ValueMetric: &events.ValueMetric{
+			Name:  proto.String("metricName"),
+			Value: proto.Float64(10),
+			Unit:  proto.String("gauge"),
+		},
+		Deployment: proto.String("deployment-name"),
+		Job:        proto.String("gorouter"),
+	}
+
+	fakeFirehoseInputChan <- &events.Envelope{
+		Origin:    proto.String("origin"),
+		Timestamp: proto.Int64(3000000000),
+		EventType: events.Envelope_CounterEvent.Enum(),
+		CounterEvent: &events.CounterEvent{
+			Name:  proto.String("counterName"),
+			Delta: proto.Uint64(3),
+			Total: proto.Uint64(15),
+		},
+		Deployment: proto.String("deployment-name"),
+		Job:        proto.String("doppler"),
+	}
+
+	close(fakeFirehoseInputChan)
+}
 
 func fakeUAAHandler(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
@@ -205,6 +252,58 @@ func fakeOpentsdbHandler(rw http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	go func() {
-		fakeDDChan <- contents
+		fakeOpenTSDBChan <- contents
 	}()
+}
+
+func fakeOpenTSDBTelnetListener() *net.TCPListener {
+	addr, err := net.ResolveTCPAddr("tcp", "localhost:8088")
+	if err != nil {
+		panic(err)
+	}
+
+	listener, err := net.ListenTCP("tcp", addr)
+	if err != nil {
+		panic(err)
+	}
+
+	go func() {
+		for {
+			// Listen for an incoming connection.
+			conn, err := listener.Accept()
+
+			if err != nil || conn == nil {
+				log.Println("Error accepting: ", err.Error())
+				return
+			}
+
+			// Handle connections in a new goroutine.
+			handleRequest(conn)
+		}
+	}()
+
+	return listener
+
+}
+
+// Handles incoming requests.
+func handleRequest(conn net.Conn) {
+
+	// Make a buffer to hold incoming data.
+	buf := make([]byte, 1024)
+	// Read the incoming connection into the buffer.
+	if conn != nil {
+		_, err := conn.Read(buf)
+		if err != nil {
+			log.Println("Error reading:", err.Error())
+			conn.Close()
+			return
+		}
+
+		fakeOpenTSDBChan <- buf
+
+		// Close the connection when you're done with it.
+		conn.Close()
+	}
+
 }

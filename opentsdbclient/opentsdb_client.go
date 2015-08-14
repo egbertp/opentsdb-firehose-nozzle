@@ -11,12 +11,13 @@ import (
 	"time"
 
 	"github.com/cloudfoundry/sonde-go/events"
+	"net"
 )
 
 const DefaultAPIURL = "http://locahost/api"
 
 type Client struct {
-	apiURL                string
+	poster                Poster
 	metrics               []Metric
 	prefix                string
 	deployment            string
@@ -40,9 +41,9 @@ type Metric struct {
 	Tags      Tags    `json:"tags"`
 }
 
-func New(apiURL string, prefix string, deployment string, ip string) *Client {
+func New(poster Poster, prefix string, deployment string, ip string) *Client {
 	return &Client{
-		apiURL:     apiURL,
+		poster:     poster,
 		prefix:     prefix,
 		deployment: deployment,
 		ip:         ip,
@@ -87,25 +88,10 @@ func (c *Client) addInternalMetric(name string, value float64) {
 
 func (c *Client) PostMetrics() error {
 	c.populateInternalMetrics()
-
 	numMetrics := len(c.metrics)
-	log.Printf("Posting %d metrics", numMetrics)
-	url := c.tsdbURL()
-	seriesBytes := c.formatMetrics()
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	resp, err := http.DefaultClient.Do(req)
+	err := c.poster.Post(c.metrics)
 	if err != nil {
 		return err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("%s", err)
-		}
-		log.Printf("Response body is: %s", string(contents))
-		return fmt.Errorf("opentsdb request returned HTTP response: %v", resp.StatusCode)
 	}
 
 	c.totalMetricsSent += float64(numMetrics)
@@ -113,16 +99,6 @@ func (c *Client) PostMetrics() error {
 
 	c.metrics = nil
 	return nil
-}
-
-func (c *Client) tsdbURL() string {
-	url := fmt.Sprintf("%s/put?details", c.apiURL)
-	return url
-}
-
-func (c *Client) formatMetrics() []byte {
-	encodedMetric, _ := json.Marshal(c.metrics)
-	return encodedMetric
 }
 
 func (c *Client) populateInternalMetrics() {
@@ -167,4 +143,97 @@ func getTags(envelope *events.Envelope) Tags {
 	ret := Tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
 	log.Println(ret)
 	return ret
+}
+
+type Poster interface {
+	Post([]Metric) error
+}
+
+type HTTPPoster struct {
+	tsdbHost string
+}
+
+func NewHTTPPoster(tsdbHost string) *HTTPPoster {
+	return &HTTPPoster{
+		tsdbHost: tsdbHost,
+	}
+}
+
+func (p *HTTPPoster) Post(metrics []Metric) error {
+	numMetrics := len(metrics)
+	log.Printf("Posting %d metrics", numMetrics)
+	url := p.tsdbURL()
+	seriesBytes := p.formatMetrics(metrics)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
+		contents, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Printf("%s", err)
+		}
+		log.Printf("Response body is: %s", string(contents))
+		return fmt.Errorf("opentsdb request returned HTTP response: %v", resp.StatusCode)
+	}
+	return nil
+}
+
+func (p *HTTPPoster) tsdbURL() string {
+	url := fmt.Sprintf("%s/put?details", p.tsdbHost)
+	return url
+}
+
+func (p *HTTPPoster) formatMetrics(metrics []Metric) []byte {
+	encodedMetric, _ := json.Marshal(metrics)
+	return encodedMetric
+}
+
+type TelnetPoster struct {
+	tsdbHost string
+}
+
+func NewTelnetPoster(tsdbHost string) *TelnetPoster {
+	return &TelnetPoster{
+		tsdbHost: tsdbHost,
+	}
+}
+
+func (p *TelnetPoster) Post(metrics []Metric) error {
+	conn, err := net.Dial("tcp", p.tsdbHost)
+	if err != nil {
+		return err
+	}
+
+	defer conn.Close()
+
+	_, err = conn.Write([]byte(p.formatMetrics(metrics)))
+	return err
+}
+
+func (p *TelnetPoster) formatMetrics(metrics []Metric) []byte {
+	var result []byte
+	for _, metric := range metrics {
+		metricString := fmt.Sprintf("put %s %d %f",
+			metric.Metric,
+			metric.Timestamp,
+			metric.Value,
+		)
+		if metric.Tags.Deployment != "" {
+			metricString += fmt.Sprintf(" deployment=%s", metric.Tags.Deployment)
+		}
+		metricString += fmt.Sprintf(" index=%d", metric.Tags.Index)
+		if metric.Tags.IP != "" {
+			metricString += fmt.Sprintf(" ip=%s", metric.Tags.IP)
+		}
+		if metric.Tags.Job != "" {
+			metricString += fmt.Sprintf(" job=%s", metric.Tags.Job)
+		}
+		metricString += "\n"
+		result = append(result, []byte(metricString)...)
+	}
+	return result
 }

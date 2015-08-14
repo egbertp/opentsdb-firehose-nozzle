@@ -1,0 +1,13 @@
+{
+  "UAAURL": "http://localhost:8084",
+  "Username": "UAA-username",
+  "Password": "UAA-password",
+  "TrafficControllerURL": "ws://localhost:8086",
+  "FirehoseSubscriptionID": "opentsdb-nozzle",
+  "OpenTSDBURL": "localhost:8088",
+  "FlushDurationSeconds": 1,
+  "InsecureSSLSkipVerify": true,
+  "MetricPrefix": "",
+  "MaxBufferSize": 50,
+  "UseTelnetAPI": true
+}

@@ -57,7 +57,13 @@ func (o *OpenTSDBFirehoseNozzle) createClient() {
 		panic(err)
 	}
 
-	o.client = opentsdbclient.New(o.config.OpenTSDBURL, o.config.MetricPrefix, o.config.Deployment, ipAddress)
+	var poster opentsdbclient.Poster
+	if o.config.UseTelnetAPI {
+		poster = opentsdbclient.NewTelnetPoster(o.config.OpenTSDBURL)
+	} else {
+		poster = opentsdbclient.NewHTTPPoster(o.config.OpenTSDBURL)
+	}
+	o.client = opentsdbclient.New(poster, o.config.MetricPrefix, o.config.Deployment, ipAddress)
 }
 
 func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {
