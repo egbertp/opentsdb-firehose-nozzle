@@ -1,24 +1,23 @@
 package opentsdbclient
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/cloudfoundry/sonde-go/events"
-	"net"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 )
 
 const DefaultAPIURL = "http://locahost/api"
 
+type Poster interface {
+	Post([]poster.Metric) error
+}
+
 type Client struct {
-	poster                Poster
-	metrics               []Metric
+	transporter           Poster
+	metrics               []poster.Metric
 	prefix                string
 	deployment            string
 	ip                    string
@@ -27,26 +26,12 @@ type Client struct {
 	hasSlowAlert          bool
 }
 
-type Tags struct {
-	Deployment string `json:"deployment"`
-	Job        string `json:"job"`
-	Index      int    `json:"index"`
-	IP         string `json:"ip"`
-}
-
-type Metric struct {
-	Metric    string  `json:"metric"`
-	Value     float64 `json:"value"`
-	Timestamp int64   `json:"timestamp"`
-	Tags      Tags    `json:"tags"`
-}
-
-func New(poster Poster, prefix string, deployment string, ip string) *Client {
+func New(transporter Poster, prefix string, deployment string, ip string) *Client {
 	return &Client{
-		poster:     poster,
-		prefix:     prefix,
-		deployment: deployment,
-		ip:         ip,
+		transporter: transporter,
+		prefix:      prefix,
+		deployment:  deployment,
+		ip:          ip,
 	}
 }
 
@@ -55,7 +40,7 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	if envelope.GetEventType() != events.Envelope_ValueMetric && envelope.GetEventType() != events.Envelope_CounterEvent {
 		return
 	}
-	metric := Metric{
+	metric := poster.Metric{
 		Value:     getValue(envelope),
 		Timestamp: envelope.GetTimestamp() / int64(time.Second),
 		Metric:    c.prefix + getName(envelope),
@@ -73,11 +58,11 @@ func (c *Client) AlertSlowConsumerError() {
 }
 
 func (c *Client) addInternalMetric(name string, value float64) {
-	internalMetric := Metric{
+	internalMetric := poster.Metric{
 		Metric:    c.prefix + name,
 		Value:     value,
 		Timestamp: time.Now().Unix(),
-		Tags: Tags{
+		Tags: poster.Tags{
 			Deployment: c.deployment,
 			IP:         c.ip,
 		},
@@ -89,7 +74,7 @@ func (c *Client) addInternalMetric(name string, value float64) {
 func (c *Client) PostMetrics() error {
 	c.populateInternalMetrics()
 	numMetrics := len(c.metrics)
-	err := c.poster.Post(c.metrics)
+	err := c.transporter.Post(c.metrics)
 	if err != nil {
 		return err
 	}
@@ -132,7 +117,7 @@ func getValue(envelope *events.Envelope) float64 {
 	}
 }
 
-func getTags(envelope *events.Envelope) Tags {
+func getTags(envelope *events.Envelope) poster.Tags {
 	log.Printf("Tags: %s\n", envelope.GetIndex())
 	index, err := strconv.Atoi(envelope.GetIndex())
 	if err != nil {
@@ -140,100 +125,12 @@ func getTags(envelope *events.Envelope) Tags {
 		index = 0
 	}
 	log.Printf("deployment %s, index %d\n", envelope.GetDeployment(), index)
-	ret := Tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
+	ret := poster.Tags{
+		Deployment: envelope.GetDeployment(),
+		Job:        envelope.GetJob(),
+		Index:      index,
+		IP:         envelope.GetIp(),
+	}
 	log.Println(ret)
 	return ret
-}
-
-type Poster interface {
-	Post([]Metric) error
-}
-
-type HTTPPoster struct {
-	tsdbHost string
-}
-
-func NewHTTPPoster(tsdbHost string) *HTTPPoster {
-	return &HTTPPoster{
-		tsdbHost: tsdbHost,
-	}
-}
-
-func (p *HTTPPoster) Post(metrics []Metric) error {
-	numMetrics := len(metrics)
-	log.Printf("Posting %d metrics", numMetrics)
-	url := p.tsdbURL()
-	seriesBytes := p.formatMetrics(metrics)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("%s", err)
-		}
-		log.Printf("Response body is: %s", string(contents))
-		return fmt.Errorf("opentsdb request returned HTTP response: %v", resp.StatusCode)
-	}
-	return nil
-}
-
-func (p *HTTPPoster) tsdbURL() string {
-	url := fmt.Sprintf("%s/put?details", p.tsdbHost)
-	return url
-}
-
-func (p *HTTPPoster) formatMetrics(metrics []Metric) []byte {
-	encodedMetric, _ := json.Marshal(metrics)
-	return encodedMetric
-}
-
-type TelnetPoster struct {
-	tsdbHost string
-}
-
-func NewTelnetPoster(tsdbHost string) *TelnetPoster {
-	return &TelnetPoster{
-		tsdbHost: tsdbHost,
-	}
-}
-
-func (p *TelnetPoster) Post(metrics []Metric) error {
-	conn, err := net.Dial("tcp", p.tsdbHost)
-	if err != nil {
-		return err
-	}
-
-	defer conn.Close()
-
-	_, err = conn.Write([]byte(p.formatMetrics(metrics)))
-	return err
-}
-
-func (p *TelnetPoster) formatMetrics(metrics []Metric) []byte {
-	var result []byte
-	for _, metric := range metrics {
-		metricString := fmt.Sprintf("put %s %d %f",
-			metric.Metric,
-			metric.Timestamp,
-			metric.Value,
-		)
-		if metric.Tags.Deployment != "" {
-			metricString += fmt.Sprintf(" deployment=%s", metric.Tags.Deployment)
-		}
-		metricString += fmt.Sprintf(" index=%d", metric.Tags.Index)
-		if metric.Tags.IP != "" {
-			metricString += fmt.Sprintf(" ip=%s", metric.Tags.IP)
-		}
-		if metric.Tags.Job != "" {
-			metricString += fmt.Sprintf(" job=%s", metric.Tags.Job)
-		}
-		metricString += "\n"
-		result = append(result, []byte(metricString)...)
-	}
-	return result
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
 	"io"
 	"log"
@@ -57,13 +58,13 @@ func (o *OpenTSDBFirehoseNozzle) createClient() {
 		panic(err)
 	}
 
-	var poster opentsdbclient.Poster
+	var transporter opentsdbclient.Poster
 	if o.config.UseTelnetAPI {
-		poster = opentsdbclient.NewTelnetPoster(o.config.OpenTSDBURL)
+		transporter = poster.NewTelnetPoster(o.config.OpenTSDBURL)
 	} else {
-		poster = opentsdbclient.NewHTTPPoster(o.config.OpenTSDBURL)
+		transporter = poster.NewHTTPPoster(o.config.OpenTSDBURL)
 	}
-	o.client = opentsdbclient.New(poster, o.config.MetricPrefix, o.config.Deployment, ipAddress)
+	o.client = opentsdbclient.New(transporter, o.config.MetricPrefix, o.config.Deployment, ipAddress)
 }
 
 func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {

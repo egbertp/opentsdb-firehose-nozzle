@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
@@ -22,17 +23,17 @@ var responseCode int
 var _ = Describe("OpentsdbClient", func() {
 
 	var (
-		ts     *httptest.Server
-		c      *opentsdbclient.Client
-		poster opentsdbclient.Poster
+		ts *httptest.Server
+		c  *opentsdbclient.Client
+		p  opentsdbclient.Poster
 	)
 
 	BeforeEach(func() {
 		bodyChan = make(chan []byte, 1)
 		responseCode = http.StatusOK
 		ts = httptest.NewServer(http.HandlerFunc(handlePost))
-		poster = opentsdbclient.NewHTTPPoster(ts.URL)
-		c = opentsdbclient.New(poster, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
+		p = poster.NewHTTPPoster(ts.URL)
+		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
 	})
 
 	It("ignores messages that aren't value metrics or counter events", func() {
@@ -70,7 +71,7 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
@@ -80,7 +81,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts ValueMetrics in JSON format", func() {
-		c = opentsdbclient.New(poster, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -114,16 +115,16 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
+			poster.Metric{
 				Metric:    "origin.metricName",
 				Value:     5,
 				Timestamp: 1,
-				Tags: opentsdbclient.Tags{
+				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
 					Index:      0,
@@ -132,11 +133,11 @@ var _ = Describe("OpentsdbClient", func() {
 			}))
 
 		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
+			poster.Metric{
 				Metric:    "origin.metricName",
 				Value:     76,
 				Timestamp: 2,
-				Tags: opentsdbclient.Tags{
+				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
 					Index:      0,
@@ -146,7 +147,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvent in JSON format", func() {
-		c = opentsdbclient.New(poster, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -180,16 +181,16 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
+			poster.Metric{
 				Metric:    "origin.metricName",
 				Value:     5,
 				Timestamp: 1,
-				Tags: opentsdbclient.Tags{
+				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
 					Index:      0,
@@ -198,11 +199,11 @@ var _ = Describe("OpentsdbClient", func() {
 			}))
 
 		Expect(metrics).To(ContainElement(
-			opentsdbclient.Metric{
+			poster.Metric{
 				Metric:    "origin.metricName",
 				Value:     76,
 				Timestamp: 2,
-				Tags: opentsdbclient.Tags{
+				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
 					Index:      0,
@@ -273,7 +274,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Expect(err).ToNot(HaveOccurred())
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		validateMetrics(metrics, 2, 0)
@@ -294,7 +295,7 @@ var _ = Describe("OpentsdbClient", func() {
 
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
@@ -311,7 +312,7 @@ var _ = Describe("OpentsdbClient", func() {
 
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
@@ -329,7 +330,7 @@ var _ = Describe("OpentsdbClient", func() {
 
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err = json.Unmarshal(receivedBytes, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
@@ -371,7 +372,7 @@ var _ = Describe("OpentsdbClient", func() {
 
 })
 
-func validateMetrics(metrics []opentsdbclient.Metric, totalMessagesReceived int, totalMetricsSent int) {
+func validateMetrics(metrics []poster.Metric, totalMessagesReceived int, totalMetricsSent int) {
 	totalMessagesReceivedFound := false
 	totalMetricsSentFound := false
 	for _, metric := range metrics {
@@ -391,7 +392,7 @@ func validateMetrics(metrics []opentsdbclient.Metric, totalMessagesReceived int,
 		if internalMetric {
 			Expect(metric.Timestamp).To(BeNumerically(">", time.Now().Unix()-10), "Timestamp should not be less than 10 seconds ago")
 			Expect(metric.Value).To(Equal(float64(metricValue)))
-			Expect(metric.Tags).To(Equal(opentsdbclient.Tags{
+			Expect(metric.Tags).To(Equal(poster.Tags{
 				Deployment: "test-deployment",
 				IP:         "dummy-ip",
 			}))
@@ -412,7 +413,7 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 }
 
-func findSlowConsumerMetric(metrics []opentsdbclient.Metric) *opentsdbclient.Metric {
+func findSlowConsumerMetric(metrics []poster.Metric) *poster.Metric {
 	for _, metric := range metrics {
 		if metric.Metric == "opentsdb.nozzle.slowConsumerAlert" {
 			return &metric

@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"net"
 	"strings"
 )
@@ -83,18 +83,18 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			Eventually(fakeOpenTSDBChan, "2s").Should(Receive(&messageBytes))
 
 			// Break JSON blob into a list of blobs, one for each metric
-			var metrics []opentsdbclient.Metric
+			var metrics []poster.Metric
 
 			log.Printf("Received message is: %s\n", string(messageBytes))
 			err := json.Unmarshal(messageBytes, &metrics)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(metrics).To(ContainElement(
-				opentsdbclient.Metric{
+				poster.Metric{
 					Metric:    "origin.metricName",
 					Timestamp: 1,
 					Value:     5,
-					Tags: opentsdbclient.Tags{
+					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "doppler",
 						Index:      0,
@@ -102,11 +102,11 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 					},
 				}))
 			Expect(metrics).To(ContainElement(
-				opentsdbclient.Metric{
+				poster.Metric{
 					Metric:    "origin.metricName",
 					Timestamp: 2,
 					Value:     10,
-					Tags: opentsdbclient.Tags{
+					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "gorouter",
 						Index:      0,
@@ -114,11 +114,11 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 					},
 				}))
 			Expect(metrics).To(ContainElement(
-				opentsdbclient.Metric{
+				poster.Metric{
 					Metric:    "origin.counterName",
 					Timestamp: 3,
 					Value:     15,
-					Tags: opentsdbclient.Tags{
+					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "doppler",
 						Index:      0,
