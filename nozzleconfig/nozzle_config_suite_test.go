@@ -1,4 +1,4 @@
-package opentsdbclient_test
+package nozzleconfig_test
 
 import (
 	. "github.com/onsi/ginkgo"
@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestOpentsdbclient(t *testing.T) {
+func TestNozzleConfig(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Opentsdbclient Suite")
+	RunSpecs(t, "Nozzle Config Suite")
 }

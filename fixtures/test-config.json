@@ -4,8 +4,9 @@
   "Password": "UAA-password",
   "TrafficControllerURL": "ws://localhost:8086",
   "FirehoseSubscriptionID": "opentsdb-nozzle",
-  "OpentsdbURL": "http://localhost:8087",
+  "OpenTSDBURL": "http://localhost:8087",
   "FlushDurationSeconds": 1,
   "InsecureSSLSkipVerify": true,
-  "MetricPrefix": ""
+  "MetricPrefix": "",
+  "MaxBufferSize": 50
 }

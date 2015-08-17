@@ -4,8 +4,11 @@
   "Password": "user_password",
   "TrafficControllerURL": "wss://doppler.walnut.cf-app.com:4443",
   "FirehoseSubscriptionID": "opentsdb-nozzle",
-  "OpentsdbURL": "http://localhost",
+  "OpenTSDBURL": "http://localhost",
   "FlushDurationSeconds": 15,
   "InsecureSSLSkipVerify": true,
-  "MetricPrefix": "opentsdbclient"
+  "MetricPrefix": "opentsdbclient",
+  "Deployment": "deployment-name",
+  "DisableAccessControl": false,
+  "MaxBufferSize": 50
 }

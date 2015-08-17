@@ -16,77 +16,82 @@ import (
 const DefaultAPIURL = "http://locahost/api"
 
 type Client struct {
-	apiURL       string
-	metricPoints map[metricKey]metricValue
-	prefix       string
+	apiURL                string
+	metrics               []Metric
+	prefix                string
+	deployment            string
+	ip                    string
+	totalMessagesReceived float64
+	totalMetricsSent      float64
+	hasSlowAlert          bool
 }
 
-func New(apiURL string, prefix string) *Client {
+type Tags struct {
+	Deployment string `json:"deployment"`
+	Job        string `json:"job"`
+	Index      int    `json:"index"`
+	IP         string `json:"ip"`
+}
+
+type Metric struct {
+	Metric    string  `json:"metric"`
+	Value     float64 `json:"value"`
+	Timestamp int64   `json:"timestamp"`
+	Tags      Tags    `json:"tags"`
+}
+
+func New(apiURL string, prefix string, deployment string, ip string) *Client {
 	return &Client{
-		apiURL:       apiURL,
-		metricPoints: make(map[metricKey]metricValue),
-		prefix:       prefix,
+		apiURL:     apiURL,
+		prefix:     prefix,
+		deployment: deployment,
+		ip:         ip,
 	}
 }
 
 func (c *Client) AddMetric(envelope *events.Envelope) {
-	key := metricKey{
-		eventType:  envelope.GetEventType(),
-		name:       getName(envelope),
-		deployment: envelope.GetDeployment(),
-		job:        envelope.GetJob(),
-		index:      envelope.GetIndex(),
-		ip:         envelope.GetIp(),
+	c.totalMessagesReceived++
+	if envelope.GetEventType() != events.Envelope_ValueMetric && envelope.GetEventType() != events.Envelope_CounterEvent {
+		return
+	}
+	metric := Metric{
+		Value:     getValue(envelope),
+		Timestamp: envelope.GetTimestamp() / int64(time.Second),
+		Metric:    c.prefix + getName(envelope),
+		Tags:      getTags(envelope),
 	}
 
-	mVal := c.metricPoints[key]
-	value := getValue(envelope)
-
-	mVal.tags = getTags(envelope)
-	mVal.points = append(mVal.points, point{
-		timestamp: envelope.GetTimestamp() / int64(time.Second),
-		value:     value,
-	})
-
-	c.metricPoints[key] = mVal
+	c.metrics = append(c.metrics, metric)
 }
 
-func (c *Client) PostAllMetrics() error {
-	var err error
-	numMetrics := len(c.metricPoints)
-	if numMetrics > 50 {
-		i := 0
-		someMetrics := make(map[metricKey]metricValue)
-		for k, v := range c.metricPoints {
-			someMetrics[k] = v
-			i := i + 1
-			if i >= 50 {
-				err = c.PostMetrics(someMetrics)
+func (c *Client) AlertSlowConsumerError() {
+	if !c.hasSlowAlert {
+		c.hasSlowAlert = true
+		c.addInternalMetric("slowConsumerAlert", 1)
+	}
+}
 
-				if err != nil {
-					fmt.Println("PostAllMetrics Error %s", err.Error())
-				}
-
-				i = 0
-				someMetrics = make(map[metricKey]metricValue)
-			}
-		}
-
-		if i > 0 {
-			err = c.PostMetrics(someMetrics)
-		}
-	} else {
-		err = c.PostMetrics(c.metricPoints)
+func (c *Client) addInternalMetric(name string, value float64) {
+	internalMetric := Metric{
+		Metric:    c.prefix + name,
+		Value:     value,
+		Timestamp: time.Now().Unix(),
+		Tags: Tags{
+			Deployment: c.deployment,
+			IP:         c.ip,
+		},
 	}
 
-	return err
+	c.metrics = append(c.metrics, internalMetric)
 }
 
-func (c *Client) PostMetrics(metrics map[metricKey]metricValue) error {
-	numMetrics := len(metrics)
+func (c *Client) PostMetrics() error {
+	c.populateInternalMetrics()
+
+	numMetrics := len(c.metrics)
 	log.Printf("Posting %d metrics", numMetrics)
-	url := c.seriesURL()
-	seriesBytes := c.formatMetrics(metrics)
+	url := c.tsdbURL()
+	seriesBytes := c.formatMetrics()
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -97,51 +102,36 @@ func (c *Client) PostMetrics(metrics map[metricKey]metricValue) error {
 	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
 		contents, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			fmt.Printf("%s", err)
+			log.Printf("%s", err)
 		}
-		fmt.Println("Response body is: %s", string(contents))
-		return fmt.Errorf("opentsdb request returned HTTP status code: %v", resp.StatusCode)
+		log.Printf("Response body is: %s", string(contents))
+		return fmt.Errorf("opentsdb request returned HTTP response: %v", resp.StatusCode)
 	}
 
-	c.metricPoints = make(map[metricKey]metricValue)
+	c.totalMetricsSent += float64(numMetrics)
+	c.hasSlowAlert = false
+
+	c.metrics = nil
 	return nil
 }
 
-func (c *Client) seriesURL() string {
+func (c *Client) tsdbURL() string {
 	url := fmt.Sprintf("%s/put?details", c.apiURL)
 	return url
 }
 
-func (c *Client) formatMetrics(inMetrics map[metricKey]metricValue) []byte {
-	metrics := []metric{}
-	for key, mVal := range inMetrics {
-		for _, p := range mVal.points {
-			metrics = append(metrics, metric{
-				Metric:    c.prefix + key.name,
-				Timestamp: p.timestamp,
-				Value:     p.value,
-				Tags:      mVal.tags,
-			})
-		}
-	}
-
-	encodedMetric, _ := json.Marshal(metrics)
-
+func (c *Client) formatMetrics() []byte {
+	encodedMetric, _ := json.Marshal(c.metrics)
 	return encodedMetric
 }
 
-type metricKey struct {
-	eventType  events.Envelope_EventType
-	name       string
-	deployment string
-	job        string
-	index      string
-	ip         string
-}
+func (c *Client) populateInternalMetrics() {
+	c.addInternalMetric("totalMessagesReceived", c.totalMessagesReceived)
+	c.addInternalMetric("totalMetricsSent", c.totalMetricsSent)
 
-type metricValue struct {
-	tags   tags
-	points []point
+	if !c.hasSlowAlert {
+		c.addInternalMetric("slowConsumerAlert", 0)
+	}
 }
 
 func getName(envelope *events.Envelope) string {
@@ -166,49 +156,15 @@ func getValue(envelope *events.Envelope) float64 {
 	}
 }
 
-func getTags(envelope *events.Envelope) tags {
+func getTags(envelope *events.Envelope) Tags {
+	log.Printf("Tags: %s\n", envelope.GetIndex())
 	index, err := strconv.Atoi(envelope.GetIndex())
 	if err != nil {
-		fmt.Println("Error %s", err.Error())
+		log.Printf("Invalid Index \"%s\" provided, using default index 0\n", envelope.GetIndex())
 		index = 0
 	}
-	fmt.Println("deployment %s, index %d", envelope.GetDeployment(), index)
-	ret := tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
-	fmt.Println(ret)
+	log.Printf("deployment %s, index %d\n", envelope.GetDeployment(), index)
+	ret := Tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
+	log.Println(ret)
 	return ret
-}
-
-func appendTagIfNotEmpty(tags []string, key string, value string) []string {
-	if value != "" {
-		tags = append(tags, fmt.Sprintf("%s:%s", key, value))
-	}
-	return tags
-}
-
-type point struct {
-	timestamp int64
-	value     float64
-}
-
-func (p point) MarshalJSON() ([]byte, error) {
-	return []byte(fmt.Sprintf(`[%d, %f]`, p.timestamp, p.value)), nil
-}
-
-type metric struct {
-	Metric    string  `json:"metric"`
-	Value     float64 `json:"value"`
-	Timestamp int64   `json:"timestamp"`
-	Host      string  `json:"host,omitempty"`
-	Tags      tags    `json:"tags"`
-}
-
-type tags struct {
-	Deployment string `json:"deployment"`
-	Job        string `json:"job"`
-	Index      int    `json:"index"`
-	Ip         string `json:"ip"`
-}
-
-type payload struct {
-	Series []metric `json:"series"`
 }
