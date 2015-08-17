@@ -31,6 +31,10 @@
 			"ImportPath": "github.com/onsi/gomega",
 			"Comment": "v1.0-52-ga2ab864",
 			"Rev": "a2ab8644e0b6a33df2cbe44673bd0f6ebba9abc3"
+		},
+		{
+			"ImportPath": "github.com/pivotal-golang/localip",
+			"Rev": "c773e5fa43049a431973996f93afa7ee10312139"
 		}
 	]
 }
