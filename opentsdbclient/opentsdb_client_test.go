@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/matcher"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 
@@ -12,9 +13,10 @@ import (
 	"github.com/gogo/protobuf/proto"
 
 	"encoding/json"
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"time"
 )
 
 var bodyChan chan []byte
@@ -33,7 +35,7 @@ var _ = Describe("OpentsdbClient", func() {
 		responseCode = http.StatusOK
 		ts = httptest.NewServer(http.HandlerFunc(handlePost))
 		p = poster.NewHTTPPoster(ts.URL)
-		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "test-job", 2, "dummy-ip")
 	})
 
 	It("ignores messages that aren't value metrics or counter events", func() {
@@ -80,8 +82,33 @@ var _ = Describe("OpentsdbClient", func() {
 
 	})
 
+	It("emits internal metrics with the correct tags", func() {
+		err := c.PostMetrics()
+		Expect(err).ToNot(HaveOccurred())
+
+		var receivedBytes []byte
+		Eventually(bodyChan).Should(Receive(&receivedBytes))
+
+		var metrics []poster.Metric
+		err = json.Unmarshal(receivedBytes, &metrics)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(metrics).To(HaveLen(3))
+
+		for _, metric := range metrics {
+			Expect(metric.Metric).To(matcher.BeContainedIn("opentsdb.nozzle.totalMessagesReceived",
+				"opentsdb.nozzle.totalMetricsSent",
+				"opentsdb.nozzle.slowConsumerAlert"))
+			Expect(metric.Tags).To(Equal(poster.Tags{
+				Deployment: "test-deployment",
+				Job:        "test-job",
+				Index:      2,
+				IP:         "dummy-ip",
+			}))
+		}
+	})
+
 	It("posts ValueMetrics in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "test-job", 0, "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -147,7 +174,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvent in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "test-job", 0, "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -395,6 +422,8 @@ func validateMetrics(metrics []poster.Metric, totalMessagesReceived int, totalMe
 			Expect(metric.Tags).To(Equal(poster.Tags{
 				Deployment: "test-deployment",
 				IP:         "dummy-ip",
+				Job:        "test-job",
+				Index:      2,
 			}))
 		}
 	}

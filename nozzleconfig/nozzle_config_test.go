@@ -1,10 +1,11 @@
 package nozzleconfig_test
 
 import (
+	"os"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
-	"os"
 )
 
 var _ = Describe("NozzleConfig", func() {
@@ -28,6 +29,8 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.DisableAccessControl).To(Equal(false))
 		Expect(conf.MaxBufferSize).To(BeEquivalentTo(50))
 		Expect(conf.UseTelnetAPI).To(BeEquivalentTo(true))
+		Expect(conf.Job).To(Equal("opentsdb-firehose-nozzle"))
+		Expect(conf.Index).To(BeEquivalentTo(0))
 	})
 
 	It("successfully overwrites file config values with environmental variables", func() {
@@ -44,6 +47,8 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_DISABLEACCESSCONTROL", "true")
 		os.Setenv("NOZZLE_MAXBUFFERSIZE", "12")
 		os.Setenv("NOZZLE_USETELNETAPI", "false")
+		os.Setenv("NOZZLE_JOB", "env-opentsdb-firehose-nozzle")
+		os.Setenv("NOZZLE_INDEX", "1")
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
 		Expect(err).ToNot(HaveOccurred())
@@ -60,5 +65,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.DisableAccessControl).To(Equal(true))
 		Expect(conf.MaxBufferSize).To(BeEquivalentTo(12))
 		Expect(conf.UseTelnetAPI).To(Equal(false))
+		Expect(conf.Job).To(Equal("env-opentsdb-firehose-nozzle"))
+		Expect(conf.Index).To(BeEquivalentTo(1))
 	})
 })
