@@ -10,8 +10,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbfirehosenozzle"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	. "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/testhelpers"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
 	"log"
@@ -89,7 +89,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents, 2).Should(Receive(&contents))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err := json.Unmarshal(contents, &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -128,7 +128,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err := json.Unmarshal(contents, &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -162,7 +162,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err := json.Unmarshal(contents, &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -199,7 +199,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err := json.Unmarshal(contents, &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -222,7 +222,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
-		var metrics []opentsdbclient.Metric
+		var metrics []poster.Metric
 		err := json.Unmarshal(contents, &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
@@ -262,7 +262,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 			var contents []byte
 			Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
-			var metrics []opentsdbclient.Metric
+			var metrics []poster.Metric
 			err := json.Unmarshal(contents, &metrics)
 			Expect(err).ToNot(HaveOccurred())
 
@@ -320,7 +320,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 	})
 })
 
-func findSlowConsumerMetric(metrics []opentsdbclient.Metric) *opentsdbclient.Metric {
+func findSlowConsumerMetric(metrics []poster.Metric) *poster.Metric {
 	for _, metric := range metrics {
 		if metric.Metric == "opentsdb.nozzle.slowConsumerAlert" {
 			return &metric

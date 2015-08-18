@@ -27,6 +27,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.Deployment).To(Equal("deployment-name"))
 		Expect(conf.DisableAccessControl).To(Equal(false))
 		Expect(conf.MaxBufferSize).To(BeEquivalentTo(50))
+		Expect(conf.UseTelnetAPI).To(BeEquivalentTo(true))
 	})
 
 	It("successfully overwrites file config values with environmental variables", func() {
@@ -42,6 +43,7 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_DEPLOYMENT", "env-deployment-name")
 		os.Setenv("NOZZLE_DISABLEACCESSCONTROL", "true")
 		os.Setenv("NOZZLE_MAXBUFFERSIZE", "12")
+		os.Setenv("NOZZLE_USETELNETAPI", "false")
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
 		Expect(err).ToNot(HaveOccurred())
@@ -57,6 +59,6 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.Deployment).To(Equal("env-deployment-name"))
 		Expect(conf.DisableAccessControl).To(Equal(true))
 		Expect(conf.MaxBufferSize).To(BeEquivalentTo(12))
-
+		Expect(conf.UseTelnetAPI).To(Equal(false))
 	})
 })

@@ -1,23 +1,23 @@
 package opentsdbclient
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/cloudfoundry/sonde-go/events"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 )
 
 const DefaultAPIURL = "http://locahost/api"
 
+type Poster interface {
+	Post([]poster.Metric) error
+}
+
 type Client struct {
-	apiURL                string
-	metrics               []Metric
+	transporter           Poster
+	metrics               []poster.Metric
 	prefix                string
 	deployment            string
 	ip                    string
@@ -26,26 +26,12 @@ type Client struct {
 	hasSlowAlert          bool
 }
 
-type Tags struct {
-	Deployment string `json:"deployment"`
-	Job        string `json:"job"`
-	Index      int    `json:"index"`
-	IP         string `json:"ip"`
-}
-
-type Metric struct {
-	Metric    string  `json:"metric"`
-	Value     float64 `json:"value"`
-	Timestamp int64   `json:"timestamp"`
-	Tags      Tags    `json:"tags"`
-}
-
-func New(apiURL string, prefix string, deployment string, ip string) *Client {
+func New(transporter Poster, prefix string, deployment string, ip string) *Client {
 	return &Client{
-		apiURL:     apiURL,
-		prefix:     prefix,
-		deployment: deployment,
-		ip:         ip,
+		transporter: transporter,
+		prefix:      prefix,
+		deployment:  deployment,
+		ip:          ip,
 	}
 }
 
@@ -54,7 +40,7 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	if envelope.GetEventType() != events.Envelope_ValueMetric && envelope.GetEventType() != events.Envelope_CounterEvent {
 		return
 	}
-	metric := Metric{
+	metric := poster.Metric{
 		Value:     getValue(envelope),
 		Timestamp: envelope.GetTimestamp() / int64(time.Second),
 		Metric:    c.prefix + getName(envelope),
@@ -72,11 +58,11 @@ func (c *Client) AlertSlowConsumerError() {
 }
 
 func (c *Client) addInternalMetric(name string, value float64) {
-	internalMetric := Metric{
+	internalMetric := poster.Metric{
 		Metric:    c.prefix + name,
 		Value:     value,
 		Timestamp: time.Now().Unix(),
-		Tags: Tags{
+		Tags: poster.Tags{
 			Deployment: c.deployment,
 			IP:         c.ip,
 		},
@@ -87,25 +73,10 @@ func (c *Client) addInternalMetric(name string, value float64) {
 
 func (c *Client) PostMetrics() error {
 	c.populateInternalMetrics()
-
 	numMetrics := len(c.metrics)
-	log.Printf("Posting %d metrics", numMetrics)
-	url := c.tsdbURL()
-	seriesBytes := c.formatMetrics()
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
-	resp, err := http.DefaultClient.Do(req)
+	err := c.transporter.Post(c.metrics)
 	if err != nil {
 		return err
-	}
-
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 || resp.StatusCode < 200 {
-		contents, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("%s", err)
-		}
-		log.Printf("Response body is: %s", string(contents))
-		return fmt.Errorf("opentsdb request returned HTTP response: %v", resp.StatusCode)
 	}
 
 	c.totalMetricsSent += float64(numMetrics)
@@ -113,16 +84,6 @@ func (c *Client) PostMetrics() error {
 
 	c.metrics = nil
 	return nil
-}
-
-func (c *Client) tsdbURL() string {
-	url := fmt.Sprintf("%s/put?details", c.apiURL)
-	return url
-}
-
-func (c *Client) formatMetrics() []byte {
-	encodedMetric, _ := json.Marshal(c.metrics)
-	return encodedMetric
 }
 
 func (c *Client) populateInternalMetrics() {
@@ -156,7 +117,7 @@ func getValue(envelope *events.Envelope) float64 {
 	}
 }
 
-func getTags(envelope *events.Envelope) Tags {
+func getTags(envelope *events.Envelope) poster.Tags {
 	log.Printf("Tags: %s\n", envelope.GetIndex())
 	index, err := strconv.Atoi(envelope.GetIndex())
 	if err != nil {
@@ -164,7 +125,12 @@ func getTags(envelope *events.Envelope) Tags {
 		index = 0
 	}
 	log.Printf("deployment %s, index %d\n", envelope.GetDeployment(), index)
-	ret := Tags{envelope.GetDeployment(), envelope.GetJob(), index, envelope.GetIp()}
+	ret := poster.Tags{
+		Deployment: envelope.GetDeployment(),
+		Job:        envelope.GetJob(),
+		Index:      index,
+		IP:         envelope.GetIp(),
+	}
 	log.Println(ret)
 	return ret
 }
