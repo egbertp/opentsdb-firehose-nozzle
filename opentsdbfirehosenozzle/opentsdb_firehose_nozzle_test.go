@@ -153,6 +153,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 				},
 				Deployment: proto.String("deployment-name"),
 				Job:        proto.String("doppler"),
+				Index:      proto.String("0"),
 			}
 			fakeFirehose.AddEvent(envelope)
 		}
@@ -188,6 +189,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 				},
 				Deployment: proto.String("deployment-name"),
 				Job:        proto.String("doppler"),
+				Index:      proto.String("0"),
 			}
 			fakeFirehose.AddEvent(envelope)
 		}
