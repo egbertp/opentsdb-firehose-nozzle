@@ -2,6 +2,12 @@ package opentsdbfirehosenozzle
 
 import (
 	"crypto/tls"
+	"io"
+	"log"
+	"strconv"
+	"strings"
+	"time"
+
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
@@ -9,11 +15,6 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
-	"io"
-	"log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 type OpenTSDBFirehoseNozzle struct {
@@ -64,7 +65,7 @@ func (o *OpenTSDBFirehoseNozzle) createClient() {
 	} else {
 		transporter = poster.NewHTTPPoster(o.config.OpenTSDBURL)
 	}
-	o.client = opentsdbclient.New(transporter, o.config.MetricPrefix, o.config.Deployment, ipAddress)
+	o.client = opentsdbclient.New(transporter, o.config.MetricPrefix, o.config.Deployment, o.config.Job, o.config.Index, ipAddress)
 }
 
 func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {

@@ -20,17 +20,21 @@ type Client struct {
 	metrics               []poster.Metric
 	prefix                string
 	deployment            string
+	job                   string
+	index                 uint32
 	ip                    string
 	totalMessagesReceived float64
 	totalMetricsSent      float64
 	hasSlowAlert          bool
 }
 
-func New(transporter Poster, prefix string, deployment string, ip string) *Client {
+func New(transporter Poster, prefix string, deployment string, job string, index uint32, ip string) *Client {
 	return &Client{
 		transporter: transporter,
 		prefix:      prefix,
 		deployment:  deployment,
+		job:         job,
+		index:       index,
 		ip:          ip,
 	}
 }
@@ -65,6 +69,8 @@ func (c *Client) addInternalMetric(name string, value float64) {
 		Tags: poster.Tags{
 			Deployment: c.deployment,
 			IP:         c.ip,
+			Job:        c.job,
+			Index:      int(c.index),
 		},
 	}
 
@@ -118,19 +124,16 @@ func getValue(envelope *events.Envelope) float64 {
 }
 
 func getTags(envelope *events.Envelope) poster.Tags {
-	log.Printf("Tags: %s\n", envelope.GetIndex())
 	index, err := strconv.Atoi(envelope.GetIndex())
 	if err != nil {
 		log.Printf("Invalid Index \"%s\" provided, using default index 0\n", envelope.GetIndex())
 		index = 0
 	}
-	log.Printf("deployment %s, index %d\n", envelope.GetDeployment(), index)
 	ret := poster.Tags{
 		Deployment: envelope.GetDeployment(),
 		Job:        envelope.GetJob(),
 		Index:      index,
 		IP:         envelope.GetIp(),
 	}
-	log.Println(ret)
 	return ret
 }

@@ -1,0 +1,15 @@
+{
+  "UAAURL": "https://uaa.10.244.0.34.xip.io",
+  "Username": "opentsdb-firehose-nozzle",
+  "Password": "admin",
+  "TrafficControllerURL": "wss://doppler.10.244.0.34.xip.io:4443",
+  "FirehoseSubscriptionID": "opentsdb-nozzle",
+  "OpenTSDBURL": "localhost:13321",
+  "FlushDurationSeconds": 15,
+  "InsecureSSLSkipVerify": true,
+  "MetricPrefix": "opentsdbclient.",
+  "Deployment": "johannes-test-firehose",
+  "DisableAccessControl": false,
+  "MaxBufferSize": 50,
+  "UseTelnetAPI": true
+}

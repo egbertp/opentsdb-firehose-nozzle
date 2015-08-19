@@ -11,5 +11,7 @@
   "Deployment": "deployment-name",
   "DisableAccessControl": false,
   "MaxBufferSize": 50,
-  "UseTelnetAPI": true
+  "UseTelnetAPI": true,
+  "Job": "opentsdb-firehose-nozzle",
+  "Index": 0
 }
