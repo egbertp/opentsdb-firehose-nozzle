@@ -11,5 +11,6 @@
   "Deployment": "johannes-test-firehose",
   "DisableAccessControl": false,
   "MaxBufferSize": 50,
-  "UseTelnetAPI": true
+  "UseTelnetAPI": true,
+  "Job": "opentsdb-firehose-nozzle"
 }

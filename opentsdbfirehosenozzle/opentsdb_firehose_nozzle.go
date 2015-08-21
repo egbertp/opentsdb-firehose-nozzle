@@ -2,10 +2,7 @@ package opentsdbfirehosenozzle
 
 import (
 	"crypto/tls"
-	"io"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/cloudfoundry/noaa"
@@ -15,6 +12,7 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
+	"reflect"
 )
 
 type OpenTSDBFirehoseNozzle struct {
@@ -109,13 +107,20 @@ func (o *OpenTSDBFirehoseNozzle) postMetrics() {
 }
 
 func (o *OpenTSDBFirehoseNozzle) handleError(err error) {
-	if err != io.EOF {
+	if reflect.TypeOf(err).String() == "*websocket.CloseError" {
+		closeErr := err.(*websocket.CloseError)
+		switch closeErr.Code {
+		case websocket.CloseNormalClosure:
+			// no op
+		case websocket.CloseInternalServerErr:
+			log.Printf("Error while reading from the firehose: %v", err)
+			log.Printf("Disconnected because nozzle couldn't keep up. Please try scaling up the nozzle.")
+			o.client.AlertSlowConsumerError()
+		default:
+			log.Printf("Error while reading from the firehose: %v", err)
+		}
+	} else {
 		log.Printf("Error while reading from the firehose: %v", err)
-	}
-
-	if isCloseError(err) {
-		log.Printf("Disconnected because nozzle couldn't keep up. Please try scaling up the nozzle.")
-		o.client.AlertSlowConsumerError()
 	}
 
 	log.Printf("Closing connection with traffic controller due to %v", err)
@@ -127,9 +132,4 @@ func (d *OpenTSDBFirehoseNozzle) handleMessage(envelope *events.Envelope) {
 		log.Printf("We've intercepted an upstream message which indicates that the nozzle or the TrafficController is not keeping up. Please try scaling up the nozzle.")
 		d.client.AlertSlowConsumerError()
 	}
-}
-
-func isCloseError(err error) bool {
-	errorMsg := "websocket: close " + strconv.Itoa(websocket.CloseInternalServerErr)
-	return strings.Contains(err.Error(), errorMsg)
 }
