@@ -3,6 +3,9 @@ package opentsdbfirehosenozzle_test
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"strings"
+
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gorilla/websocket"
@@ -14,8 +17,6 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	. "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/testhelpers"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
-	"log"
-	"strings"
 )
 
 var _ = Describe("OpenTSDB Firehose Nozzle", func() {
@@ -98,6 +99,46 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and slowConsumerAlert
 		Expect(metrics).To(HaveLen(4))
 	}, 3)
+
+	It("sends a server disconnected metric when the server disconnects abnormally", func(done Done) {
+		defer close(done)
+
+		for i := 0; i < 10; i++ {
+			envelope := events.Envelope{
+				Origin:    proto.String("origin"),
+				Timestamp: proto.Int64(1000000000),
+				EventType: events.Envelope_ValueMetric.Enum(),
+				ValueMetric: &events.ValueMetric{
+					Name:  proto.String(fmt.Sprintf("metricName-%d", i)),
+					Value: proto.Float64(float64(i)),
+					Unit:  proto.String("gauge"),
+				},
+				Deployment: proto.String("deployment-name"),
+				Job:        proto.String("doppler"),
+				Index:      proto.String("123"),
+			}
+			fakeFirehose.AddEvent(envelope)
+		}
+
+		fakeFirehose.SetCloseMessage(websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "Client did not respond to ping before keep-alive timeout expired."))
+
+		go nozzle.Start()
+
+		var contents []byte
+		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
+
+		var metrics []poster.Metric
+		err := json.Unmarshal(contents, &metrics)
+		Expect(err).ToNot(HaveOccurred())
+
+		slowConsumerMetric := findSlowConsumerMetric(metrics)
+		Expect(slowConsumerMetric).NotTo(BeNil())
+		Expect(slowConsumerMetric.Value).To(BeEquivalentTo(1))
+
+		Expect(logOutput).To(gbytes.Say("Error while reading from the firehose"))
+		Expect(logOutput).To(gbytes.Say("Client did not respond to ping before keep-alive timeout expired."))
+		Expect(logOutput).To(gbytes.Say("Disconnected because nozzle couldn't keep up."))
+	}, 2)
 
 	It("sends metrics when there are more messages than buffersize", func(done Done) {
 		defer close(done)

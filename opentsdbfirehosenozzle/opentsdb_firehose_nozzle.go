@@ -5,6 +5,8 @@ import (
 	"log"
 	"time"
 
+	"reflect"
+
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
@@ -12,7 +14,6 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
-	"reflect"
 )
 
 type OpenTSDBFirehoseNozzle struct {
