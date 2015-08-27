@@ -5,8 +5,6 @@ import (
 	"log"
 	"time"
 
-	"reflect"
-
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
@@ -108,19 +106,19 @@ func (o *OpenTSDBFirehoseNozzle) postMetrics() {
 }
 
 func (o *OpenTSDBFirehoseNozzle) handleError(err error) {
-	if reflect.TypeOf(err).String() == "*websocket.CloseError" {
-		closeErr := err.(*websocket.CloseError)
+	switch closeErr := err.(type) {
+	case *websocket.CloseError:
 		switch closeErr.Code {
 		case websocket.CloseNormalClosure:
 			// no op
-		case websocket.CloseInternalServerErr:
+		case websocket.ClosePolicyViolation:
 			log.Printf("Error while reading from the firehose: %v", err)
 			log.Printf("Disconnected because nozzle couldn't keep up. Please try scaling up the nozzle.")
 			o.client.AlertSlowConsumerError()
 		default:
 			log.Printf("Error while reading from the firehose: %v", err)
 		}
-	} else {
+	default:
 		log.Printf("Error while reading from the firehose: %v", err)
 	}
 
