@@ -2,6 +2,7 @@ package poster
 
 import (
 	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -23,8 +24,20 @@ func (p *HTTPPoster) Post(metrics []Metric) error {
 	numMetrics := len(metrics)
 	log.Printf("Posting %d metrics", numMetrics)
 	url := p.tsdbURL()
+
 	seriesBytes := p.formatMetrics(metrics)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(seriesBytes))
+	var buf bytes.Buffer
+	g := gzip.NewWriter(&buf)
+	if _, err := g.Write(seriesBytes); err != nil {
+		log.Printf("Fail to gzip metrics: %v", err)
+		return err
+	} else {
+		g.Close()
+	}
+
+	req, err := http.NewRequest("POST", url, &buf)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Encoding", "gzip")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return err

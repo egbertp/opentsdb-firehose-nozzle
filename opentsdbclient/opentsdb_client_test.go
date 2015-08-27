@@ -8,6 +8,7 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/matcher"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
@@ -74,7 +75,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 
@@ -90,7 +91,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 
@@ -143,7 +144,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(metrics).To(ContainElement(
@@ -209,7 +210,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(metrics).To(ContainElement(
@@ -269,6 +270,7 @@ var _ = Describe("OpentsdbClient", func() {
 
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
+		receivedBytes = util.UnzipIgnoreError(receivedBytes)
 
 		Expect(receivedBytes).To(ContainSubstring(`"deployment":"deployment-name","job":"doppler"`))
 		Expect(receivedBytes).To(ContainSubstring(`"deployment":"deployment-name","job":"gorouter"`))
@@ -302,14 +304,14 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		validateMetrics(metrics, 2, 0)
 
 		err = c.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		validateMetrics(metrics, 2, 5)
 	})
@@ -323,7 +325,7 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 
@@ -340,7 +342,7 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 
@@ -358,7 +360,7 @@ var _ = Describe("OpentsdbClient", func() {
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 
@@ -370,7 +372,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		err = json.Unmarshal(receivedBytes, &metrics)
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(metrics).To(HaveLen(3))
 

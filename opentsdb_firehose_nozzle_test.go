@@ -14,12 +14,14 @@ import (
 	"log"
 
 	"fmt"
+	"net"
+	"strings"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
-	"net"
-	"strings"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
 )
 
 var (
@@ -86,7 +88,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			var metrics []poster.Metric
 
 			log.Printf("Received message is: %s\n", string(messageBytes))
-			err := json.Unmarshal(messageBytes, &metrics)
+			err := json.Unmarshal(util.UnzipIgnoreError(messageBytes), &metrics)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(metrics).To(ContainElement(

@@ -1,6 +1,8 @@
 package poster_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +10,7 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 
 	"encoding/json"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
@@ -63,7 +66,10 @@ var _ = Describe("OpentsdbClient", func() {
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 
 		var metrics []poster.Metric
-		err = json.Unmarshal(receivedBytes, &metrics)
+		buf := bytes.NewBuffer(receivedBytes)
+		gzipReader, _ := gzip.NewReader(buf)
+		uncompressedData, _ := ioutil.ReadAll(gzipReader)
+		err = json.Unmarshal(uncompressedData, &metrics)
 		Expect(err).NotTo(HaveOccurred())
 
 		Expect(metrics).To(ContainElement(

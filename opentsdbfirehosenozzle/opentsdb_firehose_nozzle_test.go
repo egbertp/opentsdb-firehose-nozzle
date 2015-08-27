@@ -17,6 +17,7 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	. "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/testhelpers"
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
+	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
 )
 
 var _ = Describe("OpenTSDB Firehose Nozzle", func() {
@@ -89,9 +90,8 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents, 2).Should(Receive(&contents))
-
 		var metrics []poster.Metric
-		err := json.Unmarshal(contents, &metrics)
+		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
@@ -126,9 +126,8 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
-
 		var metrics []poster.Metric
-		err := json.Unmarshal(contents, &metrics)
+		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
 		slowConsumerMetric := findSlowConsumerMetric(metrics)
@@ -170,7 +169,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
 		var metrics []poster.Metric
-		err := json.Unmarshal(contents, &metrics)
+		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
@@ -205,7 +204,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
 		var metrics []poster.Metric
-		err := json.Unmarshal(contents, &metrics)
+		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
@@ -226,7 +225,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
 		var metrics []poster.Metric
-		err := json.Unmarshal(contents, &metrics)
+		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
 		errMetric := findSlowConsumerMetric(metrics)
@@ -266,7 +265,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 			Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
 			var metrics []poster.Metric
-			err := json.Unmarshal(contents, &metrics)
+			err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(findSlowConsumerMetric(metrics)).NotTo(BeNil())
