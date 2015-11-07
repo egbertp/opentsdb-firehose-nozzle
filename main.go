@@ -9,11 +9,14 @@ import (
 	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
 	"os"
 	"os/signal"
+	"runtime"
 	"runtime/pprof"
 	"syscall"
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	configFilePath := flag.String("config", "config/opentsdb-firehose-nozzle.json", "Location of the nozzle config json file")
 	flag.Parse()
 
