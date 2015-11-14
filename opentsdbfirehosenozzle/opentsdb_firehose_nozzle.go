@@ -85,11 +85,6 @@ func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() {
 			count++
 			o.handleMessage(envelope)
 			o.client.AddMetric(envelope)
-
-			if count > o.config.MaxBufferSize {
-				o.postMetrics()
-				count = 0
-			}
 		case err := <-o.errs:
 			o.handleError(err)
 			o.postMetrics()

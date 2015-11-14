@@ -20,7 +20,6 @@ type NozzleConfig struct {
 	MetricPrefix           string
 	Deployment             string
 	DisableAccessControl   bool
-	MaxBufferSize          uint32
 	UseTelnetAPI           bool
 	Job                    string
 	Index                  uint32
@@ -52,7 +51,6 @@ func Parse(configPath string) (*NozzleConfig, error) {
 
 	overrideWithEnvVar("NOZZLE_DEPLOYMENT", &config.Deployment)
 	overrideWithEnvBool("NOZZLE_DISABLEACCESSCONTROL", &config.DisableAccessControl)
-	overrideWithEnvUint32("NOZZLE_MAXBUFFERSIZE", &config.MaxBufferSize)
 	overrideWithEnvBool("NOZZLE_USETELNETAPI", &config.UseTelnetAPI)
 	overrideWithEnvVar("NOZZLE_JOB", &config.Job)
 	overrideWithEnvUint32("NOZZLE_INDEX", &config.Index)
