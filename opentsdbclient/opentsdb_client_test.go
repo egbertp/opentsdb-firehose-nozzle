@@ -5,10 +5,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/matcher"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/matcher"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/util"
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"

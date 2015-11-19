@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
 )
 
 var _ = Describe("NozzleConfig", func() {

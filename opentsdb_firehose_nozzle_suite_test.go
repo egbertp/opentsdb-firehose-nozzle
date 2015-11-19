@@ -6,9 +6,10 @@ import (
 
 	"testing"
 
-	"github.com/onsi/gomega/gexec"
 	"io/ioutil"
 	"log"
+
+	"github.com/onsi/gomega/gexec"
 )
 
 func TestOpentsdbFirehoseNozzle(t *testing.T) {
@@ -20,7 +21,7 @@ var pathToNozzleExecutable string
 
 var _ = BeforeSuite(func() {
 	var err error
-	pathToNozzleExecutable, err = gexec.Build("github.com/pivotal-cloudops/opentsdb-firehose-nozzle")
+	pathToNozzleExecutable, err = gexec.Build("github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle")
 	Expect(err).ShouldNot(HaveOccurred())
 
 	log.SetOutput(ioutil.Discard)

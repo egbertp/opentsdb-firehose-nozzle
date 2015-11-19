@@ -2,13 +2,14 @@ package poster_test
 
 import (
 	"fmt"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
 	"log"
 	"net"
 	"strings"
 	"time"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 )
 
 var telnetChan chan []byte
@@ -117,7 +118,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 		tcpListener.Close()
 
 		err := p.Post([]poster.Metric{})
-		Expect(err).Should(MatchError(fmt.Sprintf("dial tcp %s: connection refused", address)))
+		Expect(err).Should(MatchError(fmt.Sprintf("dial tcp %s: getsockopt: connection refused", address)))
 	})
 
 })

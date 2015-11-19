@@ -1,8 +1,9 @@
 package uaatokenfetcher
 
 import (
-	"github.com/cloudfoundry-incubator/uaago"
 	"log"
+
+	"github.com/cloudfoundry-incubator/uaago"
 )
 
 type UAATokenFetcher struct {

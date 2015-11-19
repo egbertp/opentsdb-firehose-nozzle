@@ -1,11 +1,11 @@
 package uaatokenfetcher_test
 
 import (
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/uaatokenfetcher"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/testhelpers"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/testhelpers"
 )
 
 var _ = Describe("UaaTokenFetcher", func() {

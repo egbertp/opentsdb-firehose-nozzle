@@ -4,14 +4,15 @@ import (
 	"flag"
 	"log"
 
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbfirehosenozzle"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
 	"os"
 	"os/signal"
 	"runtime"
 	"runtime/pprof"
 	"syscall"
+
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbfirehosenozzle"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/uaatokenfetcher"
 )
 
 func main() {

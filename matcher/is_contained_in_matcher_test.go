@@ -3,7 +3,7 @@ package matcher_test
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/matcher"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/matcher"
 )
 
 var _ = Describe("matchers", func() {

@@ -20,8 +20,8 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/util"
 )
 
 var (

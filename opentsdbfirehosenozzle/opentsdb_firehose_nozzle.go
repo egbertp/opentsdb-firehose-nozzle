@@ -8,9 +8,9 @@ import (
 	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbclient"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
 )
 

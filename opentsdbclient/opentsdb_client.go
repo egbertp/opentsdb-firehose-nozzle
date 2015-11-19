@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 )
 
 const DefaultAPIURL = "http://locahost/api"

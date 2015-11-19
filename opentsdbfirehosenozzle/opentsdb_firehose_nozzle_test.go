@@ -12,12 +12,12 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/nozzleconfig"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/opentsdbfirehosenozzle"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
-	. "github.com/pivotal-cloudops/opentsdb-firehose-nozzle/testhelpers"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/uaatokenfetcher"
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/util"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbfirehosenozzle"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
+	. "github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/testhelpers"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/uaatokenfetcher"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/util"
 )
 
 var _ = Describe("OpenTSDB Firehose Nozzle", func() {

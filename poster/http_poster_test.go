@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/pivotal-cloudops/opentsdb-firehose-nozzle/poster"
+	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 
 	"encoding/json"
 
@@ -123,7 +123,7 @@ var _ = Describe("OpentsdbClient", func() {
 		err := p.Post([]poster.Metric{})
 
 		Expect(err).To(HaveOccurred())
-		Expect(err).To(MatchError(fmt.Sprintf("Post http://%s/put?details: dial tcp %s: connection refused", address, address)))
+		Expect(err).To(MatchError(fmt.Sprintf("Post http://%s/put?details: dial tcp %s: getsockopt: connection refused", address, address)))
 	})
 })
 
