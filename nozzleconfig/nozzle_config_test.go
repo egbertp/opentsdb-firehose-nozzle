@@ -31,6 +31,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.UseTelnetAPI).To(BeEquivalentTo(true))
 		Expect(conf.Job).To(Equal("opentsdb-firehose-nozzle"))
 		Expect(conf.Index).To(BeEquivalentTo(0))
+		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(60))
 	})
 
 	It("successfully overwrites file config values with environmental variables", func() {
@@ -49,6 +50,7 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_USETELNETAPI", "false")
 		os.Setenv("NOZZLE_JOB", "env-opentsdb-firehose-nozzle")
 		os.Setenv("NOZZLE_INDEX", "1")
+		os.Setenv("NOZZLE_IDLETIMEOUTSECONDS", "50")
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
 		Expect(err).ToNot(HaveOccurred())
@@ -67,5 +69,6 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.UseTelnetAPI).To(Equal(false))
 		Expect(conf.Job).To(Equal("env-opentsdb-firehose-nozzle"))
 		Expect(conf.Index).To(BeEquivalentTo(1))
+		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(50))
 	})
 })

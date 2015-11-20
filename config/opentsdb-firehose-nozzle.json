@@ -13,5 +13,6 @@
   "MaxBufferSize": 50,
   "UseTelnetAPI": true,
   "Job": "opentsdb-firehose-nozzle",
-  "Index": 0
+  "Index": 0,
+  "IdleTimeoutSeconds": 60
 }

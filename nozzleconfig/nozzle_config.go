@@ -24,6 +24,7 @@ type NozzleConfig struct {
 	UseTelnetAPI           bool
 	Job                    string
 	Index                  uint32
+	IdleTimeoutSeconds     uint32
 }
 
 func Parse(configPath string) (*NozzleConfig, error) {
@@ -56,6 +57,7 @@ func Parse(configPath string) (*NozzleConfig, error) {
 	overrideWithEnvBool("NOZZLE_USETELNETAPI", &config.UseTelnetAPI)
 	overrideWithEnvVar("NOZZLE_JOB", &config.Job)
 	overrideWithEnvUint32("NOZZLE_INDEX", &config.Index)
+	overrideWithEnvUint32("NOZZLE_IDLETIMEOUTSECONDS", &config.IdleTimeoutSeconds)
 	return &config, nil
 }
 
