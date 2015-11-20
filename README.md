@@ -33,7 +33,7 @@ The configuration file specifies the interval at which the nozzle will flush met
 
 # Tests
 
-You need [ginkgo](http://onsi.github.io/ginkgo/) to run the tests. The tests can be executed by:
+You need [ginkgo](http://onsi.github.io/ginkgo/) and go 1.5+ to run the tests. The tests can be executed by:
 ```
 go build
 ginkgo -r
