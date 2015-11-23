@@ -36,7 +36,7 @@ func NewOpenTSDBFirehoseNozzle(config *nozzleconfig.NozzleConfig, tokenFetcher A
 	}
 }
 
-func (o *OpenTSDBFirehoseNozzle) Start() {
+func (o *OpenTSDBFirehoseNozzle) Start() error {
 	var authToken string
 
 	if !o.config.DisableAccessControl {
@@ -46,8 +46,9 @@ func (o *OpenTSDBFirehoseNozzle) Start() {
 	log.Print("Starting OpenTSDB Firehose Nozzle...")
 	o.createClient()
 	go o.consumeFirehose(authToken)
-	o.postToOpenTSDB()
+	err := o.postToOpenTSDB()
 	log.Print("OpenTSDB Firehose Nozzle shutting down...")
+	return err
 }
 
 func (o *OpenTSDBFirehoseNozzle) createClient() {
@@ -70,10 +71,11 @@ func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {
 		o.config.TrafficControllerURL,
 		&tls.Config{InsecureSkipVerify: o.config.InsecureSSLSkipVerify},
 		nil)
+	o.consumer.SetIdleTimeout(time.Duration(o.config.IdleTimeoutSeconds) * time.Second)
 	o.consumer.Firehose(o.config.FirehoseSubscriptionID, authToken, o.messages, o.errs)
 }
 
-func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() {
+func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() error {
 	ticker := time.NewTicker(time.Duration(o.config.FlushDurationSeconds) * time.Second)
 	for {
 		select {
@@ -85,7 +87,7 @@ func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() {
 		case err := <-o.errs:
 			o.handleError(err)
 			o.postMetrics()
-			return
+			return err
 		}
 	}
 }
