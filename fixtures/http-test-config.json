@@ -7,6 +7,5 @@
   "OpenTSDBURL": "http://localhost:8087",
   "FlushDurationSeconds": 1,
   "InsecureSSLSkipVerify": true,
-  "MetricPrefix": "",
-  "MaxBufferSize": 50
+  "MetricPrefix": ""
 }

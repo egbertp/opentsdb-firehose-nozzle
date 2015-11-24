@@ -8,6 +8,5 @@
   "FlushDurationSeconds": 1,
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "",
-  "MaxBufferSize": 50,
   "UseTelnetAPI": true
 }

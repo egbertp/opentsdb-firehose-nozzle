@@ -77,21 +77,13 @@ func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {
 
 func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() error {
 	ticker := time.NewTicker(time.Duration(o.config.FlushDurationSeconds) * time.Second)
-	var count uint32 = 0
 	for {
 		select {
 		case <-ticker.C:
 			o.postMetrics()
-			count = 0
 		case envelope := <-o.messages:
-			count++
 			o.handleMessage(envelope)
 			o.client.AddMetric(envelope)
-
-			if count > o.config.MaxBufferSize {
-				o.postMetrics()
-				count = 0
-			}
 		case err := <-o.errs:
 			o.handleError(err)
 			o.postMetrics()
