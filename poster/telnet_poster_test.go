@@ -117,8 +117,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 		address := tcpListener.Addr().String()
 		tcpListener.Close()
 
-		err := p.Post([]poster.Metric{})
-		Expect(err).Should(MatchError(fmt.Sprintf("dial tcp %s: getsockopt: connection refused", address)))
+		Eventually(func() error { return p.Post([]poster.Metric{}) }).Should(MatchError(fmt.Sprintf("dial tcp %s: getsockopt: connection refused", address)))
 	})
 
 })
