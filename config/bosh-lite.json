@@ -8,8 +8,10 @@
   "FlushDurationSeconds": 15,
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "opentsdbclient.",
-  "Deployment": "johannes-test-firehose",
+  "Deployment": "test-firehose",
   "DisableAccessControl": false,
   "UseTelnetAPI": true,
-  "Job": "opentsdb-firehose-nozzle"
+  "Job": "opentsdb-firehose-nozzle",
+  "Index": 0,
+  "IdleTimeoutSeconds": 60
 }
