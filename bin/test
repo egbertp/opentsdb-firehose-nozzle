@@ -11,7 +11,6 @@ echo "Go formatting..."
 go fmt ./...
 
 echo "Go vetting..."
-go get -v golang.org/x/tools/cmd/vet
 go vet ./...
 
 echo "Go imports"
