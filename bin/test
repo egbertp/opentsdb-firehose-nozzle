@@ -23,4 +23,4 @@ go get -d -v -t ./...
 
 
 echo "Recursive ginkgo... ${*:+(with parameter(s) }$*${*:+)}"
-ginkgo -r --race --randomizeAllSpecs --failOnPending -cover $*
+ginkgo -r --randomizeAllSpecs --failOnPending -cover $*
