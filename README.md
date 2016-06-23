@@ -11,7 +11,7 @@ properties:
     clients:
       opentsdb-firehose-nozzle:
         access-token-validity: 1209600
-        authorized-grant-types: authorization_code,client_credentials,refresh_token
+        authorized-grant-types: client_credentials,refresh_token
         override: true
         secret: <password>
         scope: openid,oauth.approvals,doppler.firehose
