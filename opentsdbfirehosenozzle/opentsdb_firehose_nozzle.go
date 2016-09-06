@@ -5,21 +5,21 @@ import (
 	"log"
 	"time"
 
-	"github.com/cloudfoundry/noaa"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
+	"github.com/cloudfoundry/noaa/consumer"
 )
 
 type OpenTSDBFirehoseNozzle struct {
 	config           *nozzleconfig.NozzleConfig
-	errs             chan error
-	messages         chan *events.Envelope
+	errs             <-chan error
+	messages         <-chan *events.Envelope
 	authTokenFetcher AuthTokenFetcher
-	consumer         *noaa.Consumer
+	consumer         *consumer.Consumer
 	client           *opentsdbclient.Client
 }
 
@@ -30,8 +30,8 @@ type AuthTokenFetcher interface {
 func NewOpenTSDBFirehoseNozzle(config *nozzleconfig.NozzleConfig, tokenFetcher AuthTokenFetcher) *OpenTSDBFirehoseNozzle {
 	return &OpenTSDBFirehoseNozzle{
 		config:           config,
-		errs:             make(chan error),
-		messages:         make(chan *events.Envelope),
+		errs:             make(<-chan error),
+		messages:         make(<-chan *events.Envelope),
 		authTokenFetcher: tokenFetcher,
 	}
 }
@@ -45,7 +45,7 @@ func (o *OpenTSDBFirehoseNozzle) Start() error {
 
 	log.Print("Starting OpenTSDB Firehose Nozzle...")
 	o.createClient()
-	go o.consumeFirehose(authToken)
+	o.consumeFirehose(authToken)
 	err := o.postToOpenTSDB()
 	log.Print("OpenTSDB Firehose Nozzle shutting down...")
 	return err
@@ -67,12 +67,12 @@ func (o *OpenTSDBFirehoseNozzle) createClient() {
 }
 
 func (o *OpenTSDBFirehoseNozzle) consumeFirehose(authToken string) {
-	o.consumer = noaa.NewConsumer(
+	o.consumer = consumer.New(
 		o.config.TrafficControllerURL,
 		&tls.Config{InsecureSkipVerify: o.config.InsecureSSLSkipVerify},
 		nil)
 	o.consumer.SetIdleTimeout(time.Duration(o.config.IdleTimeoutSeconds) * time.Second)
-	o.consumer.Firehose(o.config.FirehoseSubscriptionID, authToken, o.messages, o.errs)
+	o.messages, o.errs = o.consumer.Firehose(o.config.FirehoseSubscriptionID, authToken)
 }
 
 func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() error {
@@ -104,7 +104,7 @@ func (o *OpenTSDBFirehoseNozzle) handleError(err error) {
 	case *websocket.CloseError:
 		switch closeErr.Code {
 		case websocket.CloseNormalClosure:
-			// no op
+		// no op
 		case websocket.ClosePolicyViolation:
 			log.Printf("Error while reading from the firehose: %v", err)
 			log.Printf("Disconnected because nozzle couldn't keep up. Please try scaling up the nozzle.")
