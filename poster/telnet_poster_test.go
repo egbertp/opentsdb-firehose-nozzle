@@ -35,7 +35,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 			Tags: poster.Tags{
 				Deployment: "deployment-name",
 				Job:        "doppler",
-				Index:      0,
+				Index:      "SOME-GUID",
 				IP:         "10.10.10.10",
 			},
 		}
@@ -47,7 +47,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 		Eventually(telnetChan).Should(Receive(&receivedBytes))
 		receivedMetrics := strings.Split(string(receivedBytes), "\n")
 		Expect(receivedMetrics).To(HaveLen(2)) // 1 metric + extra newline at end of last metric = 2
-		Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 ip=10.10.10.10 job=doppler", timestamp, 5.0)))
+		Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=SOME-GUID ip=10.10.10.10 job=doppler", timestamp, 5.0)))
 	})
 
 	It("ignores missing deployment tag", func() {
@@ -58,7 +58,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 			Timestamp: timestamp,
 			Tags: poster.Tags{
 				Job:   "doppler",
-				Index: 0,
+				Index: "SOME-GUID",
 				IP:    "10.10.10.10",
 			},
 		}
@@ -68,7 +68,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 
 		var receivedBytes []byte
 		Eventually(telnetChan).Should(Receive(&receivedBytes))
-		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f index=0 ip=10.10.10.10 job=doppler\n", timestamp, 5.0)))
+		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f index=SOME-GUID ip=10.10.10.10 job=doppler\n", timestamp, 5.0)))
 	})
 
 	It("ignores missing job tag", func() {
@@ -79,7 +79,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 			Timestamp: timestamp,
 			Tags: poster.Tags{
 				Deployment: "deployment-name",
-				Index:      0,
+				Index:      "SOME-GUID",
 				IP:         "10.10.10.10",
 			},
 		}
@@ -89,7 +89,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 
 		var receivedBytes []byte
 		Eventually(telnetChan).Should(Receive(&receivedBytes))
-		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 ip=10.10.10.10\n", timestamp, 5.0)))
+		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=SOME-GUID ip=10.10.10.10\n", timestamp, 5.0)))
 	})
 
 	It("ignores missing ip tag", func() {
@@ -101,7 +101,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 			Tags: poster.Tags{
 				Deployment: "deployment-name",
 				Job:        "doppler",
-				Index:      0,
+				Index:      "SOME-GUID",
 			},
 		}
 
@@ -110,7 +110,7 @@ var _ = Describe("OpentsdbClient Tcp", func() {
 
 		var receivedBytes []byte
 		Eventually(telnetChan).Should(Receive(&receivedBytes))
-		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 job=doppler\n", timestamp, 5.0)))
+		Expect(string(receivedBytes)).To(ContainSubstring(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=SOME-GUID job=doppler\n", timestamp, 5.0)))
 	})
 
 	It("shows a proper error when the connection does not work", func() {
