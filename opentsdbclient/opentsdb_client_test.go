@@ -36,7 +36,7 @@ var _ = Describe("OpentsdbClient", func() {
 		responseCode = http.StatusOK
 		ts = httptest.NewServer(http.HandlerFunc(handlePost))
 		p = poster.NewHTTPPoster(ts.URL)
-		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "test-job", 2, "dummy-ip")
+		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "test-job", "SOME-GUID", "dummy-ip")
 	})
 
 	It("ignores messages that aren't value metrics or counter events", func() {
@@ -44,6 +44,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_LogMessage.Enum(),
+			Index:     proto.String("SOME-METRIC-GUID"),
 			LogMessage: &events.LogMessage{
 				Message:     []byte("log message"),
 				MessageType: events.LogMessage_OUT.Enum(),
@@ -56,6 +57,7 @@ var _ = Describe("OpentsdbClient", func() {
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
+			Index:     proto.String("SOME-METRIC-GUID-2"),
 			EventType: events.Envelope_ContainerMetric.Enum(),
 			ContainerMetric: &events.ContainerMetric{
 				ApplicationId: proto.String("app-id"),
@@ -102,14 +104,14 @@ var _ = Describe("OpentsdbClient", func() {
 			Expect(metric.Tags).To(Equal(poster.Tags{
 				Deployment: "test-deployment",
 				Job:        "test-job",
-				Index:      2,
+				Index:      "SOME-GUID",
 				IP:         "dummy-ip",
 			}))
 		}
 	})
 
 	It("posts ValueMetrics in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "test-job", 0, "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -121,7 +123,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
-			Index:      proto.String("0"),
+			Index:      proto.String("SOME-METRIC-GUID"),
 		})
 
 		c.AddMetric(&events.Envelope{
@@ -134,7 +136,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
-			Index:      proto.String("0"),
+			Index:      proto.String("SOME-METRIC-GUID-2"),
 		})
 
 		err := c.PostMetrics()
@@ -155,7 +157,7 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-METRIC-GUID",
 					IP:         "",
 				},
 			}))
@@ -168,14 +170,14 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-METRIC-GUID-2",
 					IP:         "",
 				},
 			}))
 	})
 
 	It("posts CounterEvent in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "test-job", 0, "dummy-ip")
+		c = opentsdbclient.New(p, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
 
 		c.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
@@ -187,7 +189,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
-			Index:      proto.String("0"),
+			Index:      proto.String("SOME-METRIC-GUID"),
 		})
 
 		c.AddMetric(&events.Envelope{
@@ -200,7 +202,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
-			Index:      proto.String("0"),
+			Index:      proto.String("SOME-METRIC-GUID-2"),
 		})
 
 		err := c.PostMetrics()
@@ -221,7 +223,7 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-METRIC-GUID",
 					IP:         "",
 				},
 			}))
@@ -234,7 +236,7 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-METRIC-GUID-2",
 					IP:         "",
 				},
 			}))
@@ -425,7 +427,7 @@ func validateMetrics(metrics []poster.Metric, totalMessagesReceived int, totalMe
 				Deployment: "test-deployment",
 				IP:         "dummy-ip",
 				Job:        "test-job",
-				Index:      2,
+				Index:      "SOME-GUID",
 			}))
 		}
 	}

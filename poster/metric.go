@@ -3,7 +3,7 @@ package poster
 type Tags struct {
 	Deployment string `json:"deployment"`
 	Job        string `json:"job"`
-	Index      int    `json:"index"`
+	Index      string `json:"index"`
 	IP         string `json:"ip"`
 }
 

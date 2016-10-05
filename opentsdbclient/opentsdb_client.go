@@ -1,8 +1,6 @@
 package opentsdbclient
 
 import (
-	"log"
-	"strconv"
 	"time"
 
 	"github.com/cloudfoundry/sonde-go/events"
@@ -21,14 +19,14 @@ type Client struct {
 	prefix                string
 	deployment            string
 	job                   string
-	index                 uint32
+	index                 string
 	ip                    string
 	totalMessagesReceived float64
 	totalMetricsSent      float64
 	hasSlowAlert          bool
 }
 
-func New(transporter Poster, prefix string, deployment string, job string, index uint32, ip string) *Client {
+func New(transporter Poster, prefix string, deployment string, job string, index string, ip string) *Client {
 	return &Client{
 		transporter: transporter,
 		prefix:      prefix,
@@ -70,7 +68,7 @@ func (c *Client) addInternalMetric(name string, value float64) {
 			Deployment: c.deployment,
 			IP:         c.ip,
 			Job:        c.job,
-			Index:      int(c.index),
+			Index:      c.index,
 		},
 	}
 
@@ -124,15 +122,10 @@ func getValue(envelope *events.Envelope) float64 {
 }
 
 func getTags(envelope *events.Envelope) poster.Tags {
-	index, err := strconv.Atoi(envelope.GetIndex())
-	if err != nil {
-		log.Printf("Invalid Index \"%s\" provided, using default index 0\n", envelope.GetIndex())
-		index = 0
-	}
 	ret := poster.Tags{
 		Deployment: envelope.GetDeployment(),
 		Job:        envelope.GetJob(),
-		Index:      index,
+		Index:      envelope.GetIndex(),
 		IP:         envelope.GetIp(),
 	}
 	return ret

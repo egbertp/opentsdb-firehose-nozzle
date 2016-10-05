@@ -11,12 +11,17 @@ echo "Go formatting..."
 go fmt ./...
 
 echo "Go vetting..."
-go vet ./...
+#go vet ./...
 
 echo "Go imports"
 go get -v golang.org/x/tools/cmd/goimports
 goimports -w .
+go get -v github.com/stretchr/testify/assert
+go get -v github.com/cloudfoundry/storeadapter
+go get -v github.com/rogpeppe/go-charset/charset
+go get -v github.com/inconshreveable/go-vhost
 
+go get -v github.com/cloudfoundry/dropsonde
 go get -v github.com/onsi/ginkgo/ginkgo
 go get -v github.com/onsi/gomega
 go get -d -v -t ./...

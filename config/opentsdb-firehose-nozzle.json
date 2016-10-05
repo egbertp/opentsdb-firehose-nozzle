@@ -12,6 +12,6 @@
   "DisableAccessControl": false,
   "UseTelnetAPI": true,
   "Job": "opentsdb-firehose-nozzle",
-  "Index": 0,
+  "Index": "SOME-GUID",
   "IdleTimeoutSeconds": 60
 }

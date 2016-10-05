@@ -22,7 +22,7 @@ type NozzleConfig struct {
 	DisableAccessControl   bool
 	UseTelnetAPI           bool
 	Job                    string
-	Index                  uint32
+	Index                  string
 	IdleTimeoutSeconds     uint32
 }
 
@@ -54,7 +54,7 @@ func Parse(configPath string) (*NozzleConfig, error) {
 	overrideWithEnvBool("NOZZLE_DISABLEACCESSCONTROL", &config.DisableAccessControl)
 	overrideWithEnvBool("NOZZLE_USETELNETAPI", &config.UseTelnetAPI)
 	overrideWithEnvVar("NOZZLE_JOB", &config.Job)
-	overrideWithEnvUint32("NOZZLE_INDEX", &config.Index)
+	overrideWithEnvVar("NOZZLE_INDEX", &config.Index)
 	overrideWithEnvUint32("NOZZLE_IDLETIMEOUTSECONDS", &config.IdleTimeoutSeconds)
 	return &config, nil
 }

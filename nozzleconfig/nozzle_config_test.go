@@ -29,7 +29,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.DisableAccessControl).To(Equal(false))
 		Expect(conf.UseTelnetAPI).To(BeEquivalentTo(true))
 		Expect(conf.Job).To(Equal("opentsdb-firehose-nozzle"))
-		Expect(conf.Index).To(BeEquivalentTo(0))
+		Expect(conf.Index).To(BeEquivalentTo("SOME-GUID"))
 		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(60))
 	})
 
@@ -47,7 +47,7 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_DISABLEACCESSCONTROL", "true")
 		os.Setenv("NOZZLE_USETELNETAPI", "false")
 		os.Setenv("NOZZLE_JOB", "env-opentsdb-firehose-nozzle")
-		os.Setenv("NOZZLE_INDEX", "1")
+		os.Setenv("NOZZLE_INDEX", "SOME-GUID-2")
 		os.Setenv("NOZZLE_IDLETIMEOUTSECONDS", "50")
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
@@ -65,7 +65,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.DisableAccessControl).To(Equal(true))
 		Expect(conf.UseTelnetAPI).To(Equal(false))
 		Expect(conf.Job).To(Equal("env-opentsdb-firehose-nozzle"))
-		Expect(conf.Index).To(BeEquivalentTo(1))
+		Expect(conf.Index).To(BeEquivalentTo("SOME-GUID-2"))
 		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(50))
 	})
 })

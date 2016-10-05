@@ -38,7 +38,7 @@ func (p *TelnetPoster) formatMetrics(metrics []Metric) []byte {
 		if metric.Tags.Deployment != "" {
 			metricString += fmt.Sprintf(" deployment=%s", metric.Tags.Deployment)
 		}
-		metricString += fmt.Sprintf(" index=%d", metric.Tags.Index)
+		metricString += fmt.Sprintf(" index=%s", metric.Tags.Index)
 		if metric.Tags.IP != "" {
 			metricString += fmt.Sprintf(" ip=%s", metric.Tags.IP)
 		}

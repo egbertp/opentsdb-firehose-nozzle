@@ -44,7 +44,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Tags: poster.Tags{
 				Deployment: "deployment-name",
 				Job:        "doppler",
-				Index:      0,
+				Index:      "SOME-GUID",
 				IP:         "10.10.10.10",
 			},
 		}
@@ -55,7 +55,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Tags: poster.Tags{
 				Deployment: "deployment-name",
 				Job:        "doppler",
-				Index:      0,
+				Index:      "SOME-GUID-2",
 			},
 		}
 
@@ -80,7 +80,7 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-GUID",
 					IP:         "10.10.10.10",
 				},
 			}))
@@ -93,7 +93,7 @@ var _ = Describe("OpentsdbClient", func() {
 				Tags: poster.Tags{
 					Deployment: "deployment-name",
 					Job:        "doppler",
-					Index:      0,
+					Index:      "SOME-GUID-2",
 					IP:         "",
 				},
 			}))
