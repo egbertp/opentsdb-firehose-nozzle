@@ -8,5 +8,6 @@
   "FlushDurationSeconds": 1,
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "",
-  "UseTelnetAPI": true
+  "UseTelnetAPI": true,
+  "Index": "SOME-GUID"
 }

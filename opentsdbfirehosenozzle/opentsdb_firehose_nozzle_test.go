@@ -279,7 +279,9 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 		It("does not rquire the presence of config.UAAURL", func() {
 			nozzle.Start()
-			Consistently(func() int { return tokenFetcher.NumCalls }).Should(Equal(0))
+			Consistently(func() int {
+				return tokenFetcher.NumCalls
+			}).Should(Equal(0))
 		})
 	})
 

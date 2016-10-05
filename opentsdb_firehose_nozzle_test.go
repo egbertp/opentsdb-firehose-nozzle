@@ -99,7 +99,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "doppler",
-						Index:      0,
+						Index:      "SOME-METRIC-GUID",
 						IP:         "",
 					},
 				}))
@@ -111,7 +111,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "gorouter",
-						Index:      0,
+						Index:      "SOME-METRIC-GUID-2",
 						IP:         "",
 					},
 				}))
@@ -123,7 +123,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 					Tags: poster.Tags{
 						Deployment: "deployment-name",
 						Job:        "doppler",
-						Index:      0,
+						Index:      "SOME-METRIC-GUID-3",
 						IP:         "",
 					},
 				}))
@@ -157,9 +157,9 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			Eventually(fakeOpenTSDBChan).Should(Receive(&receivedBytes))
 			receivedMetrics := strings.Split(string(receivedBytes), "\n")
 			Expect(receivedMetrics).To(HaveLen(7))
-			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 job=doppler", 1, 5.0)))
-			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=0 job=gorouter", 2, 10.0)))
-			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.counterName %d %f deployment=deployment-name index=0 job=doppler", 3, 15.0)))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=SOME-METRIC-GUID job=doppler", 1, 5.0)))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.metricName %d %f deployment=deployment-name index=SOME-METRIC-GUID-2 job=gorouter", 2, 10.0)))
+			Expect(receivedMetrics).To(ContainElement(fmt.Sprintf("put origin.counterName %d %f deployment=deployment-name index=SOME-METRIC-GUID-3 job=doppler", 3, 15.0)))
 
 			close(done)
 		}, 2.0)
@@ -180,6 +180,7 @@ func sendEventsThroughFirehose(fakeFirehoseInputChan chan *events.Envelope) {
 		},
 		Deployment: proto.String("deployment-name"),
 		Job:        proto.String("doppler"),
+		Index:      proto.String("SOME-METRIC-GUID"),
 	}
 
 	fakeFirehoseInputChan <- &events.Envelope{
@@ -193,6 +194,7 @@ func sendEventsThroughFirehose(fakeFirehoseInputChan chan *events.Envelope) {
 		},
 		Deployment: proto.String("deployment-name"),
 		Job:        proto.String("gorouter"),
+		Index:      proto.String("SOME-METRIC-GUID-2"),
 	}
 
 	fakeFirehoseInputChan <- &events.Envelope{
@@ -206,6 +208,7 @@ func sendEventsThroughFirehose(fakeFirehoseInputChan chan *events.Envelope) {
 		},
 		Deployment: proto.String("deployment-name"),
 		Job:        proto.String("doppler"),
+		Index:      proto.String("SOME-METRIC-GUID-3"),
 	}
 
 	close(fakeFirehoseInputChan)

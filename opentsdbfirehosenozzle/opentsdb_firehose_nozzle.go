@@ -5,13 +5,13 @@ import (
 	"log"
 	"time"
 
+	"github.com/cloudfoundry/noaa/consumer"
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gorilla/websocket"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
 	"github.com/pivotal-golang/localip"
-	"github.com/cloudfoundry/noaa/consumer"
 )
 
 type OpenTSDBFirehoseNozzle struct {
