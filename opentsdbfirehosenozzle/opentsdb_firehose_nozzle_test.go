@@ -8,7 +8,6 @@ import (
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/gogo/protobuf/proto"
-	"github.com/gorilla/websocket"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -97,48 +96,9 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
 
-		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and slowConsumerAlert
+		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and totalFirehoseDisconnects
 		Expect(metrics).To(HaveLen(4))
 	}, 3)
-
-	It("sends a server disconnected metric when the server disconnects abnormally", func(done Done) {
-		defer close(done)
-
-		for i := 0; i < 10; i++ {
-			envelope := events.Envelope{
-				Origin:    proto.String("origin"),
-				Timestamp: proto.Int64(1000000000),
-				EventType: events.Envelope_ValueMetric.Enum(),
-				ValueMetric: &events.ValueMetric{
-					Name:  proto.String(fmt.Sprintf("metricName-%d", i)),
-					Value: proto.Float64(float64(i)),
-					Unit:  proto.String("gauge"),
-				},
-				Deployment: proto.String("deployment-name"),
-				Job:        proto.String("doppler"),
-				Index:      proto.String("123"),
-			}
-			fakeFirehose.AddEvent(envelope)
-		}
-
-		fakeFirehose.SetCloseMessage(websocket.FormatCloseMessage(websocket.ClosePolicyViolation, "Client did not respond to ping before keep-alive timeout expired."))
-
-		go nozzle.Start()
-
-		var contents []byte
-		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
-		var metrics []poster.Metric
-		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
-		Expect(err).ToNot(HaveOccurred())
-
-		slowConsumerMetric := findSlowConsumerMetric(metrics)
-		Expect(slowConsumerMetric).NotTo(BeNil())
-		Expect(slowConsumerMetric.Value).To(BeEquivalentTo(1))
-
-		Expect(logOutput).To(gbytes.Say("Error while reading from the firehose"))
-		Expect(logOutput).To(gbytes.Say("Client did not respond to ping before keep-alive timeout expired."))
-		Expect(logOutput).To(gbytes.Say("Disconnected because nozzle couldn't keep up."))
-	}, 2)
 
 	It("receives data from the firehose", func(done Done) {
 		defer close(done)
@@ -169,71 +129,15 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
 
-		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
-
-		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and slowConsumerAlert
+		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and totalFirehoseDisconnects
 		Expect(metrics).To(HaveLen(13))
 
-	}, 2)
-
-	It("does not report slow consumer error when closed for other reasons", func(done Done) {
-		defer close(done)
-
-		fakeFirehose.SetCloseMessage(websocket.FormatCloseMessage(websocket.CloseInvalidFramePayloadData, "Weird things happened."))
-
-		go nozzle.Start()
-
-		var contents []byte
-		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
-
-		var metrics []poster.Metric
-		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
-		Expect(err).ToNot(HaveOccurred())
-
-		errMetric := findSlowConsumerMetric(metrics)
-		Expect(errMetric).NotTo(BeNil())
-		Expect(errMetric.Value).To(BeEquivalentTo(0))
-
-		Expect(logOutput).To(gbytes.Say("Error while reading from the firehose"))
-		Expect(logOutput).NotTo(gbytes.Say("Client did not respond to ping before keep-alive timeout expired."))
-		Expect(logOutput).NotTo(gbytes.Say("Disconnected because nozzle couldn't keep up."))
 	}, 2)
 
 	It("gets a valid authentication token", func() {
 		go nozzle.Start()
 		Eventually(fakeFirehose.Requested).Should(BeTrue())
 		Consistently(fakeFirehose.LastAuthorization).Should(Equal("bearer 123456789"))
-	})
-
-	Context("receives a truncatingbuffer.droppedmessage value metric,", func() {
-		It("sets a slow-consumer error", func() {
-			slowConsumerError := events.Envelope{
-				Origin:    proto.String("doppler"),
-				Timestamp: proto.Int64(1000000000),
-				EventType: events.Envelope_CounterEvent.Enum(),
-				CounterEvent: &events.CounterEvent{
-					Name:  proto.String("TruncatingBuffer.DroppedMessages"),
-					Delta: proto.Uint64(1),
-					Total: proto.Uint64(1),
-				},
-				Deployment: proto.String("deployment-name"),
-				Job:        proto.String("doppler"),
-			}
-			fakeFirehose.AddEvent(slowConsumerError)
-
-			go nozzle.Start()
-
-			var contents []byte
-			Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
-
-			var metrics []poster.Metric
-			err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
-			Expect(err).ToNot(HaveOccurred())
-
-			Expect(findSlowConsumerMetric(metrics)).NotTo(BeNil())
-
-			Expect(logOutput).To(gbytes.Say("We've intercepted an upstream message which indicates that the nozzle or the TrafficController is not keeping up. Please try scaling up the nozzle."))
-		})
 	})
 
 	Context("when the DisableAccessControl is set to true", func() {
@@ -312,13 +216,40 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 			Expect(err.Error()).To(ContainSubstring("i/o timeout"))
 		})
 	})
+
+	FContext("when the firehose disconnects", func() {
+		BeforeEach(func() {
+			nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
+		})
+
+		It("Increments the total disconnects metric", func() {
+			err := nozzle.Start()
+			fakeFirehose.Close()
+
+			var contents []byte
+			Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
+
+			var metrics []poster.Metric
+			err = json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
+			Expect(err).ToNot(HaveOccurred())
+
+			// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and totalFirehoseDisconnects
+			Expect(metrics).To(HaveLen(3))
+			metric := getDisconnectMetric(metrics)
+			Expect(metric.Metric).To(Equal("opentsdb.nozzle.totalFirehoseDisconnects"))
+			Expect(metric.Value).To(BeEquivalentTo(1.0))
+		})
+	})
+
+
 })
 
-func findSlowConsumerMetric(metrics []poster.Metric) *poster.Metric {
+func getDisconnectMetric(metrics []poster.Metric) poster.Metric {
 	for _, metric := range metrics {
-		if metric.Metric == "opentsdb.nozzle.slowConsumerAlert" {
-			return &metric
+		println(metric.Metric)
+		if metric.Metric == "opentsdb.nozzle.totalFirehoseDisconnects" {
+			return metric
 		}
 	}
-	return nil
+	return poster.Metric{};
 }

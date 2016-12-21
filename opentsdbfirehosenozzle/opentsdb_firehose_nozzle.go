@@ -7,7 +7,6 @@ import (
 
 	"github.com/cloudfoundry/noaa/consumer"
 	"github.com/cloudfoundry/sonde-go/events"
-	"github.com/gorilla/websocket"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
@@ -82,7 +81,6 @@ func (o *OpenTSDBFirehoseNozzle) postToOpenTSDB() error {
 		case <-ticker.C:
 			o.postMetrics()
 		case envelope := <-o.messages:
-			o.handleMessage(envelope)
 			o.client.AddMetric(envelope)
 		case err := <-o.errs:
 			o.handleError(err)
@@ -100,29 +98,7 @@ func (o *OpenTSDBFirehoseNozzle) postMetrics() {
 }
 
 func (o *OpenTSDBFirehoseNozzle) handleError(err error) {
-	switch closeErr := err.(type) {
-	case *websocket.CloseError:
-		switch closeErr.Code {
-		case websocket.CloseNormalClosure:
-		// no op
-		case websocket.ClosePolicyViolation:
-			log.Printf("Error while reading from the firehose: %v", err)
-			log.Printf("Disconnected because nozzle couldn't keep up. Please try scaling up the nozzle.")
-			o.client.AlertSlowConsumerError()
-		default:
-			log.Printf("Error while reading from the firehose: %v", err)
-		}
-	default:
-		log.Printf("Error while reading from the firehose: %v", err)
-	}
-
+	o.client.IncrementFirehoseDisconnect()
 	log.Printf("Closing connection with traffic controller due to %v", err)
 	o.consumer.Close()
-}
-
-func (d *OpenTSDBFirehoseNozzle) handleMessage(envelope *events.Envelope) {
-	if envelope.GetEventType() == events.Envelope_CounterEvent && envelope.CounterEvent.GetName() == "TruncatingBuffer.DroppedMessages" && envelope.GetOrigin() == "doppler" {
-		log.Printf("We've intercepted an upstream message which indicates that the nozzle or the TrafficController is not keeping up. Please try scaling up the nozzle.")
-		d.client.AlertSlowConsumerError()
-	}
 }

@@ -26,21 +26,21 @@ var responseCode int
 var _ = Describe("OpentsdbClient", func() {
 
 	var (
-		ts *httptest.Server
-		c  *opentsdbclient.Client
-		p  opentsdbclient.Poster
+		server *httptest.Server
+		client  *opentsdbclient.Client
+		opentsdbPoster opentsdbclient.Poster
 	)
 
 	BeforeEach(func() {
 		bodyChan = make(chan []byte, 1)
 		responseCode = http.StatusOK
-		ts = httptest.NewServer(http.HandlerFunc(handlePost))
-		p = poster.NewHTTPPoster(ts.URL)
-		c = opentsdbclient.New(p, "opentsdb.nozzle.", "test-deployment", "test-job", "SOME-GUID", "dummy-ip")
+		server = httptest.NewServer(http.HandlerFunc(handlePost))
+		opentsdbPoster = poster.NewHTTPPoster(server.URL)
+		client = opentsdbclient.New(opentsdbPoster, "opentsdb.nozzle.", "test-deployment", "test-job", "SOME-GUID", "dummy-ip")
 	})
 
 	It("ignores messages that aren't value metrics or counter events", func() {
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_LogMessage.Enum(),
@@ -54,7 +54,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Job:        proto.String("doppler"),
 		})
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			Index:     proto.String("SOME-METRIC-GUID-2"),
@@ -70,7 +70,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Job:        proto.String("doppler"),
 		})
 
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -86,7 +86,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("emits internal metrics with the correct tags", func() {
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -100,7 +100,7 @@ var _ = Describe("OpentsdbClient", func() {
 		for _, metric := range metrics {
 			Expect(metric.Metric).To(matcher.BeContainedIn("opentsdb.nozzle.totalMessagesReceived",
 				"opentsdb.nozzle.totalMetricsSent",
-				"opentsdb.nozzle.slowConsumerAlert"))
+				"opentsdb.nozzle.totalFirehoseDisconnects"))
 			Expect(metric.Tags).To(Equal(poster.Tags{
 				Deployment: "test-deployment",
 				Job:        "test-job",
@@ -110,10 +110,29 @@ var _ = Describe("OpentsdbClient", func() {
 		}
 	})
 
-	It("posts ValueMetrics in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
+	FIt("increments totalFirehoseDisconnects metric", func() {
+		client.IncrementFirehoseDisconnect()
 
-		c.AddMetric(&events.Envelope{
+		err := client.PostMetrics()
+		Expect(err).ToNot(HaveOccurred())
+
+		var receivedBytes []byte
+		Eventually(bodyChan).Should(Receive(&receivedBytes))
+
+		var metrics []poster.Metric
+		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(metrics).To(HaveLen(3))
+
+		metric := getDisconnectMetric(metrics)
+		Expect(metric.Metric).To(Equal("opentsdb.nozzle.totalFirehoseDisconnects"))
+		Expect(metric.Value).To(BeEquivalentTo(1.0))
+	})
+
+	It("posts ValueMetrics in JSON format", func() {
+		client = opentsdbclient.New(opentsdbPoster, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
+
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_ValueMetric.Enum(),
@@ -126,7 +145,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Index:      proto.String("SOME-METRIC-GUID"),
 		})
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(2000000000),
 			EventType: events.Envelope_ValueMetric.Enum(),
@@ -139,7 +158,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Index:      proto.String("SOME-METRIC-GUID-2"),
 		})
 
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -177,9 +196,9 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvent in JSON format", func() {
-		c = opentsdbclient.New(p, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
+		client = opentsdbclient.New(opentsdbPoster, "", "test-deployment", "test-job", "SOMETHING-IRRELEVANT", "dummy-ip")
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_CounterEvent.Enum(),
@@ -192,7 +211,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Index:      proto.String("SOME-METRIC-GUID"),
 		})
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(2000000000),
 			EventType: events.Envelope_CounterEvent.Enum(),
@@ -205,7 +224,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Index:      proto.String("SOME-METRIC-GUID-2"),
 		})
 
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -243,7 +262,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("registers metrics with the same name but different tags as different", func() {
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_ValueMetric.Enum(),
@@ -255,7 +274,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Job:        proto.String("doppler"),
 		})
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(2000000000),
 			EventType: events.Envelope_ValueMetric.Enum(),
@@ -267,7 +286,7 @@ var _ = Describe("OpentsdbClient", func() {
 			Job:        proto.String("gorouter"),
 		})
 
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 
 		var receivedBytes []byte
@@ -279,7 +298,7 @@ var _ = Describe("OpentsdbClient", func() {
 	})
 
 	It("posts CounterEvents in JSON format and empties map after post", func() {
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(1000000000),
 			EventType: events.Envelope_CounterEvent.Enum(),
@@ -290,7 +309,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 		})
 
-		c.AddMetric(&events.Envelope{
+		client.AddMetric(&events.Envelope{
 			Origin:    proto.String("origin"),
 			Timestamp: proto.Int64(2000000000),
 			EventType: events.Envelope_CounterEvent.Enum(),
@@ -301,7 +320,7 @@ var _ = Describe("OpentsdbClient", func() {
 			},
 		})
 
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		var receivedBytes []byte
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
@@ -310,7 +329,7 @@ var _ = Describe("OpentsdbClient", func() {
 		Expect(err).NotTo(HaveOccurred())
 		validateMetrics(metrics, 2, 0)
 
-		err = c.PostMetrics()
+		err = client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(bodyChan).Should(Receive(&receivedBytes))
 		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
@@ -318,86 +337,21 @@ var _ = Describe("OpentsdbClient", func() {
 		validateMetrics(metrics, 2, 5)
 	})
 
-	It("sends a value 1 for the slowConsumerAlert metric when consumer error is set", func() {
-		c.AlertSlowConsumerError()
-
-		err := c.PostMetrics()
-		Expect(err).ToNot(HaveOccurred())
-
-		var receivedBytes []byte
-		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []poster.Metric
-		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(metrics).To(HaveLen(3))
-
-		errMetric := findSlowConsumerMetric(metrics)
-		Expect(errMetric).NotTo(BeNil())
-		Expect(errMetric.Value).To(BeEquivalentTo(1))
-
-	})
-
-	It("sends a value 0 for the slowConsumerAlert metric when consumer error is not set", func() {
-		err := c.PostMetrics()
-		Expect(err).ToNot(HaveOccurred())
-
-		var receivedBytes []byte
-		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []poster.Metric
-		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(metrics).To(HaveLen(3))
-
-		errMetric := findSlowConsumerMetric(metrics)
-		Expect(errMetric).NotTo(BeNil())
-		Expect(errMetric.Value).To(BeEquivalentTo(0))
-	})
-
-	It("unsets the slow consumer error once it publishes the alert to opentsdb", func() {
-		c.AlertSlowConsumerError()
-
-		err := c.PostMetrics()
-		Expect(err).ToNot(HaveOccurred())
-
-		var receivedBytes []byte
-		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		var metrics []poster.Metric
-		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(metrics).To(HaveLen(3))
-
-		errMetric := findSlowConsumerMetric(metrics)
-		Expect(errMetric).NotTo(BeNil())
-		Expect(errMetric.Value).To(BeEquivalentTo(1))
-
-		err = c.PostMetrics()
-		Expect(err).ToNot(HaveOccurred())
-
-		Eventually(bodyChan).Should(Receive(&receivedBytes))
-		err = json.Unmarshal(util.UnzipIgnoreError(receivedBytes), &metrics)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(metrics).To(HaveLen(3))
-
-		errMetric = findSlowConsumerMetric(metrics)
-		Expect(errMetric).NotTo(BeNil())
-		Expect(errMetric.Value).To(BeEquivalentTo(0))
-	})
-
 	It("returns an error when opentsdb responds with a non 200 response code", func() {
 		responseCode = http.StatusBadRequest // 400
-		err := c.PostMetrics()
+		err := client.PostMetrics()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("opentsdb request returned HTTP response: 400"))
 		<-bodyChan
 
 		responseCode = http.StatusSwitchingProtocols // 101
-		err = c.PostMetrics()
+		err = client.PostMetrics()
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("opentsdb request returned HTTP response: 101"))
 		<-bodyChan
 
 		responseCode = http.StatusAccepted // 201
-		err = c.PostMetrics()
+		err = client.PostMetrics()
 		Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -446,11 +400,11 @@ func handlePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(responseCode)
 }
 
-func findSlowConsumerMetric(metrics []poster.Metric) *poster.Metric {
+func getDisconnectMetric(metrics []poster.Metric) poster.Metric {
 	for _, metric := range metrics {
-		if metric.Metric == "opentsdb.nozzle.slowConsumerAlert" {
-			return &metric
+		if metric.Metric == "opentsdb.nozzle.totalFirehoseDisconnects" {
+			return metric
 		}
 	}
-	return nil
+	return poster.Metric{};
 }

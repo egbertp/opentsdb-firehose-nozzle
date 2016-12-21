@@ -14,16 +14,16 @@ type Poster interface {
 }
 
 type Client struct {
-	transporter           Poster
-	metrics               []poster.Metric
-	prefix                string
-	deployment            string
-	job                   string
-	index                 string
-	ip                    string
-	totalMessagesReceived float64
-	totalMetricsSent      float64
-	hasSlowAlert          bool
+	transporter              Poster
+	metrics                  []poster.Metric
+	prefix                   string
+	deployment               string
+	job                      string
+	index                    string
+	ip                       string
+	totalMessagesReceived    float64
+	totalMetricsSent         float64
+	totalFirehoseDisconnects float64
 }
 
 func New(transporter Poster, prefix string, deployment string, job string, index string, ip string) *Client {
@@ -52,13 +52,6 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	c.metrics = append(c.metrics, metric)
 }
 
-func (c *Client) AlertSlowConsumerError() {
-	if !c.hasSlowAlert {
-		c.hasSlowAlert = true
-		c.addInternalMetric("slowConsumerAlert", 1)
-	}
-}
-
 func (c *Client) addInternalMetric(name string, value float64) {
 	internalMetric := poster.Metric{
 		Metric:    c.prefix + name,
@@ -84,8 +77,6 @@ func (c *Client) PostMetrics() error {
 	}
 
 	c.totalMetricsSent += float64(numMetrics)
-	c.hasSlowAlert = false
-
 	c.metrics = nil
 	return nil
 }
@@ -93,10 +84,7 @@ func (c *Client) PostMetrics() error {
 func (c *Client) populateInternalMetrics() {
 	c.addInternalMetric("totalMessagesReceived", c.totalMessagesReceived)
 	c.addInternalMetric("totalMetricsSent", c.totalMetricsSent)
-
-	if !c.hasSlowAlert {
-		c.addInternalMetric("slowConsumerAlert", 0)
-	}
+	c.addInternalMetric("totalFirehoseDisconnects", c.totalFirehoseDisconnects)
 }
 
 func getName(envelope *events.Envelope) string {
@@ -129,4 +117,8 @@ func getTags(envelope *events.Envelope) poster.Tags {
 		IP:         envelope.GetIp(),
 	}
 	return ret
+}
+
+func (c *Client) IncrementFirehoseDisconnect() {
+	c.totalFirehoseDisconnects++
 }
