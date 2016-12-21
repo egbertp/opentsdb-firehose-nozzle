@@ -246,7 +246,6 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 func getDisconnectMetric(metrics []poster.Metric) poster.Metric {
 	for _, metric := range metrics {
-		println(metric.Metric)
 		if metric.Metric == "opentsdb.nozzle.totalFirehoseDisconnects" {
 			return metric
 		}
