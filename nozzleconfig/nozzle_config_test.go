@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
+	"time"
 )
 
 var _ = Describe("NozzleConfig", func() {
@@ -31,6 +32,7 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.Job).To(Equal("opentsdb-firehose-nozzle"))
 		Expect(conf.Index).To(BeEquivalentTo("SOME-GUID"))
 		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(60))
+		Expect(conf.FirehoseReconnectDelay).To(Equal(100 * time.Millisecond))
 	})
 
 	It("successfully overwrites file config values with environmental variables", func() {
@@ -49,6 +51,8 @@ var _ = Describe("NozzleConfig", func() {
 		os.Setenv("NOZZLE_JOB", "env-opentsdb-firehose-nozzle")
 		os.Setenv("NOZZLE_INDEX", "SOME-GUID-2")
 		os.Setenv("NOZZLE_IDLETIMEOUTSECONDS", "50")
+		os.Setenv("NOZZLE_FIREHOSERECONNECTDELAY", "2s")
+
 
 		conf, err := nozzleconfig.Parse("../config/opentsdb-firehose-nozzle.json")
 		Expect(err).ToNot(HaveOccurred())
@@ -67,5 +71,6 @@ var _ = Describe("NozzleConfig", func() {
 		Expect(conf.Job).To(Equal("env-opentsdb-firehose-nozzle"))
 		Expect(conf.Index).To(BeEquivalentTo("SOME-GUID-2"))
 		Expect(conf.IdleTimeoutSeconds).To(BeEquivalentTo(50))
+		Expect(conf.FirehoseReconnectDelay).To(Equal(2 * time.Second))
 	})
 })

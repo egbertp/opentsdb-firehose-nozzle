@@ -8,5 +8,6 @@
   "FlushDurationSeconds": 1,
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "",
-  "Index": "SOME-GUID"
+  "Index": "SOME-GUID",
+  "FirehoseReconnectDelay": 100000000
 }

@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"time"
 )
 
 type NozzleConfig struct {
@@ -24,6 +25,7 @@ type NozzleConfig struct {
 	Job                    string
 	Index                  string
 	IdleTimeoutSeconds     uint32
+	FirehoseReconnectDelay time.Duration
 }
 
 func Parse(configPath string) (*NozzleConfig, error) {
@@ -56,6 +58,7 @@ func Parse(configPath string) (*NozzleConfig, error) {
 	overrideWithEnvVar("NOZZLE_JOB", &config.Job)
 	overrideWithEnvVar("NOZZLE_INDEX", &config.Index)
 	overrideWithEnvUint32("NOZZLE_IDLETIMEOUTSECONDS", &config.IdleTimeoutSeconds)
+	overrideWithEnvDuration("NOZZLE_FIREHOSERECONNECTDELAY", &config.FirehoseReconnectDelay)
 	return &config, nil
 }
 
@@ -74,6 +77,17 @@ func overrideWithEnvUint32(name string, value *uint32) {
 			panic(err)
 		}
 		*value = uint32(tmpValue)
+	}
+}
+
+func overrideWithEnvDuration(name string, value *time.Duration) {
+	envValue := os.Getenv(name)
+	if envValue != "" {
+		tmpValue, err := time.ParseDuration(envValue)
+		if err != nil {
+			panic(err)
+		}
+		*value = tmpValue
 	}
 }
 

@@ -18,7 +18,6 @@ import (
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/uaatokenfetcher"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/util"
 
-	"time"
 )
 
 var _ = Describe("OpenTSDB Firehose Nozzle", func() {
@@ -51,6 +50,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 			TrafficControllerURL: strings.Replace(fakeFirehose.URL(), "http:", "ws:", 1),
 			DisableAccessControl: false,
 			MetricPrefix:         "opentsdb.nozzle.",
+			FirehoseReconnectDelay: 100000000,
 		}
 
 		logOutput = gbytes.NewBuffer()
@@ -64,41 +64,36 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		fakeOpenTSDB.Close()
 	})
 
-	It("sends metrics when the FlushDurationTicker ticks", func(done Done) {
-		defer close(done)
+	It("sends metrics when the FlushDurationTicker ticks", func() {
 		fakeFirehose.KeepConnectionAlive()
 		defer fakeFirehose.CloseAliveConnection()
-
 		config.FlushDurationSeconds = 1
 		nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
-
 		envelope := events.Envelope{
-			Origin:    proto.String("origin"),
-			Timestamp: proto.Int64(1000000000),
+		Origin:    proto.String("origin"),
 			EventType: events.Envelope_ValueMetric.Enum(),
 			ValueMetric: &events.ValueMetric{
-				Name:  proto.String("metricName"),
+			Name:  proto.String("metricName"),
 				Value: proto.Float64(float64(1)),
 				Unit:  proto.String("gauge"),
 			},
 			Deployment: proto.String("deployment-name"),
 			Job:        proto.String("doppler"),
+			Timestamp: proto.Int64(1000000000),
 		}
 		fakeFirehose.AddEvent(envelope)
-
 		go nozzle.Start()
-
+		defer nozzle.Stop()
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents, 2).Should(Receive(&contents))
 		var metrics []poster.Metric
 		err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 		Expect(err).ToNot(HaveOccurred())
-
 		Expect(logOutput).ToNot(gbytes.Say("Error while reading from the firehose"))
 
 		// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and totalFirehoseDisconnects
 		Expect(metrics).To(HaveLen(4))
-	}, 3)
+	})
 
 	It("receives data from the firehose", func(done Done) {
 		defer close(done)
@@ -121,6 +116,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		}
 
 		go nozzle.Start()
+		defer nozzle.Stop()
 
 		var contents []byte
 		Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
@@ -136,6 +132,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 	It("gets a valid authentication token", func() {
 		go nozzle.Start()
+		defer nozzle.Stop()
 		Eventually(fakeFirehose.Requested).Should(BeTrue())
 		Consistently(fakeFirehose.LastAuthorization).Should(Equal("bearer 123456789"))
 	})
@@ -159,6 +156,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 				OpenTSDBURL:          fakeOpenTSDB.URL(),
 				TrafficControllerURL: strings.Replace(fakeFirehose.URL(), "http:", "ws:", 1),
 				DisableAccessControl: true,
+				FirehoseReconnectDelay: 100000000,
 			}
 
 			nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
@@ -172,48 +170,24 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 
 		It("still tries to connect to the firehose", func() {
 			go nozzle.Start()
+			defer nozzle.Stop()
 			Eventually(fakeFirehose.Requested).Should(BeTrue())
 		})
 
 		It("gets an empty authentication token", func() {
 			go nozzle.Start()
+			defer nozzle.Stop()
 			Consistently(fakeUAA.Requested).Should(Equal(false))
 			Consistently(fakeFirehose.LastAuthorization).Should(Equal(""))
 		})
 
-		It("does not rquire the presence of config.UAAURL", func() {
-			nozzle.Start()
+		It("does not require the presence of config.UAAURL", func() {
+			go nozzle.Start()
+			defer nozzle.Stop()
+
 			Consistently(func() int {
 				return tokenFetcher.NumCalls
 			}).Should(Equal(0))
-		})
-	})
-
-	Context("when idle timeout has expired", func() {
-		var fakeIdleFirehose *FakeIdleFirehose
-		BeforeEach(func() {
-			fakeIdleFirehose = NewFakeIdleFirehose(time.Second * 2)
-			fakeIdleFirehose.Start()
-
-			config = &nozzleconfig.NozzleConfig{
-				OpenTSDBURL:          fakeOpenTSDB.URL(),
-				TrafficControllerURL: strings.Replace(fakeIdleFirehose.URL(), "http:", "ws:", 1),
-				DisableAccessControl: true,
-				IdleTimeoutSeconds:   1,
-				FlushDurationSeconds: 1,
-			}
-
-			tokenFetcher := &FakeTokenFetcher{}
-			nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
-		})
-		AfterEach(func() {
-			fakeIdleFirehose.Close()
-		})
-
-		It("Start returns an error", func() {
-			err := nozzle.Start()
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("i/o timeout"))
 		})
 	})
 
@@ -223,14 +197,15 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		})
 
 		It("Increments the total disconnects metric", func() {
-			err := nozzle.Start()
+			go nozzle.Start()
+			defer nozzle.Stop()
 			fakeFirehose.Close()
 
 			var contents []byte
 			Eventually(fakeOpenTSDB.ReceivedContents).Should(Receive(&contents))
 
 			var metrics []poster.Metric
-			err = json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
+			err := json.Unmarshal(util.UnzipIgnoreError(contents), &metrics)
 			Expect(err).ToNot(HaveOccurred())
 
 			// +3 internal metrics that show totalMessagesReceived, totalMetricSent, and totalFirehoseDisconnects

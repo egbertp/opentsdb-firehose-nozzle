@@ -129,7 +129,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 				}))
 
 			close(done)
-		}, 2.0)
+		}, 12.0)
 	})
 
 	Context("with a Telnet OpenTSDB endpoint", func() {

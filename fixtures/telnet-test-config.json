@@ -9,5 +9,6 @@
   "InsecureSSLSkipVerify": true,
   "MetricPrefix": "",
   "UseTelnetAPI": true,
-  "Index": "SOME-GUID"
+  "Index": "SOME-GUID",
+  "FirehoseReconnectDelay": 100000000
 }

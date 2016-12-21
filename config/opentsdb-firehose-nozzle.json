@@ -13,5 +13,6 @@
   "UseTelnetAPI": true,
   "Job": "opentsdb-firehose-nozzle",
   "Index": "SOME-GUID",
-  "IdleTimeoutSeconds": 60
+  "IdleTimeoutSeconds": 60,
+  "FirehoseReconnectDelay": 100000000
 }
