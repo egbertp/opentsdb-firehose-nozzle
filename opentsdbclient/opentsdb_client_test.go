@@ -110,7 +110,7 @@ var _ = Describe("OpentsdbClient", func() {
 		}
 	})
 
-	FIt("increments totalFirehoseDisconnects metric", func() {
+	It("increments totalFirehoseDisconnects metric", func() {
 		client.IncrementFirehoseDisconnect()
 
 		err := client.PostMetrics()

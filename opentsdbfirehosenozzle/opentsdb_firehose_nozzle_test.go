@@ -217,7 +217,7 @@ var _ = Describe("OpenTSDB Firehose Nozzle", func() {
 		})
 	})
 
-	FContext("when the firehose disconnects", func() {
+	Context("when the firehose disconnects", func() {
 		BeforeEach(func() {
 			nozzle = opentsdbfirehosenozzle.NewOpenTSDBFirehoseNozzle(config, tokenFetcher)
 		})
