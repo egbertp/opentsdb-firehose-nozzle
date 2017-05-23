@@ -5,6 +5,7 @@ import (
 
 	"github.com/cloudfoundry/sonde-go/events"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
+	"log"
 )
 
 const DefaultAPIURL = "http://locahost/api"
@@ -52,7 +53,7 @@ func (c *Client) AddMetric(envelope *events.Envelope) {
 	c.metrics = append(c.metrics, metric)
 }
 
-func (c *Client) addInternalMetric(name string, value float64) {
+func (c *Client) addInternalMetric(name string, value float64, sendingQueue []poster.Metric) []poster.Metric {
 	internalMetric := poster.Metric{
 		Metric:    c.prefix + name,
 		Value:     value,
@@ -65,26 +66,30 @@ func (c *Client) addInternalMetric(name string, value float64) {
 		},
 	}
 
-	c.metrics = append(c.metrics, internalMetric)
+	return append(sendingQueue, internalMetric)
 }
 
 func (c *Client) PostMetrics() error {
-	c.populateInternalMetrics()
-	numMetrics := len(c.metrics)
-	err := c.transporter.Post(c.metrics)
+	sendingQueue := c.metrics
+	c.metrics = nil
+
+	sendingQueue = c.populateInternalMetrics(sendingQueue)
+	numMetrics := len(sendingQueue)
+
+	err := c.transporter.Post(sendingQueue)
 	if err != nil {
+		log.Printf("Could not write to maximus VM.  Dropping %d messages.", numMetrics)
 		return err
 	}
 
 	c.totalMetricsSent += float64(numMetrics)
-	c.metrics = nil
 	return nil
 }
 
-func (c *Client) populateInternalMetrics() {
-	c.addInternalMetric("totalMessagesReceived", c.totalMessagesReceived)
-	c.addInternalMetric("totalMetricsSent", c.totalMetricsSent)
-	c.addInternalMetric("totalFirehoseDisconnects", c.totalFirehoseDisconnects)
+func (c *Client) populateInternalMetrics(sendingQueue []poster.Metric) []poster.Metric {
+	sendingQueue = c.addInternalMetric("totalMessagesReceived", c.totalMessagesReceived, sendingQueue)
+	sendingQueue = c.addInternalMetric("totalMetricsSent", c.totalMetricsSent, sendingQueue)
+	return c.addInternalMetric("totalFirehoseDisconnects", c.totalFirehoseDisconnects, sendingQueue)
 }
 
 func getName(envelope *events.Envelope) string {

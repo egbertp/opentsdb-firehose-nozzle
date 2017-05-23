@@ -77,6 +77,7 @@ var _ = Describe("OpentsdbFirehoseNozzle", func() {
 			)
 			Expect(err).NotTo(HaveOccurred())
 		})
+
 		It("forwards metrics in a batch", func(done Done) {
 			sendEventsThroughFirehose(fakeFirehoseInputChan)
 
