@@ -10,7 +10,7 @@ import (
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/nozzleconfig"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/opentsdbclient"
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/poster"
-	"github.com/pivotal-golang/localip"
+	"code.cloudfoundry.org/localip"
 )
 
 type OpenTSDBFirehoseNozzle struct {
