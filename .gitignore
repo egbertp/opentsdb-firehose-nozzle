@@ -27,3 +27,7 @@ _testmain.go
 *.coverprofile
 
 opentsdb-firehose-nozzle
+
+target/*
+vendor/*
+glide.lock
