@@ -15,6 +15,12 @@ import (
 	"github.com/pivotal-cf-experimental/opentsdb-firehose-nozzle/uaatokenfetcher"
 )
 
+var (
+	CommitHash string
+	VersionTag string
+	BuildTime  string
+)
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
@@ -25,6 +31,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error parsing config: %s", err.Error())
 	}
+
+	log.Printf("The version is: %s; the commit hash is: %s. Build time is: %s", VersionTag, CommitHash, BuildTime)
 
 	tokenFetcher := &uaatokenfetcher.UAATokenFetcher{
 		UaaUrl:                config.UAAURL,
